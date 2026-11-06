@@ -1,0 +1,16 @@
+name = "ims3310-helper"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+# Pages allowed to call this helper (comma-separated, no trailing slash).
+ALLOWED_ORIGINS = "https://xiao-wen-tan.github.io"
+# Claude model and effort. claude-haiku-4-5 is about 5x cheaper per question.
+MODEL = "claude-opus-5"
+EFFORT = "low"
+
+# At most 5 questions per minute from one network address.
+[[ratelimits]]
+name = "ASK_LIMITER"
+namespace_id = "3310"
+simple = { limit = 5, period = 60 }
