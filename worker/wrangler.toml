@@ -4,7 +4,7 @@ compatibility_date = "2026-11-01"
 
 [vars]
 # Pages allowed to call this helper (comma-separated, no trailing slash).
-ALLOWED_ORIGINS = "https://xiao-wen-tan.github.io"
+ALLOWED_ORIGINS = "https://wen-tan.com,https://www.wen-tan.com,https://xiao-wen-tan.github.io"
 # Claude model and effort. claude-haiku-4-5 is about 5x cheaper per question.
 MODEL = "claude-opus-5"
 EFFORT = "low"
