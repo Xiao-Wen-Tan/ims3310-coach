@@ -12,6 +12,8 @@ ALLOWED_ORIGINS = "https://wen-tan.com,https://www.wen-tan.com,https://xiao-wen-
 # of claude-opus-5 per question (Haiku ignores EFFORT). See README.md for a cost example.
 MODEL = "claude-opus-5"
 EFFORT = "low"
+# Where office-hours bookings are emailed. Must match destination_address in [[send_email]] below.
+OFFICE_HOURS_TO = "Xiaowen.Tan@utdallas.edu"
 
 # Weekly "News this week" stories: Saturdays at 13:00 UTC (7-8 AM Central), covering the past 7 days.
 [triggers]
@@ -30,3 +32,10 @@ simple = { limit = 5, period = 60 }
 binding = "DB"
 database_name = "ims3310-log"
 database_id = "1040c70c-1193-4468-8f60-ad4b0995f999"
+
+# Office-hours booking emails (Cloudflare Email Routing). Before this works, in the Cloudflare
+# dashboard: turn on Email Routing for wen-tan.com and verify Xiaowen.Tan@utdallas.edu as a
+# destination address. The sender is office-hours@wen-tan.com (public_config.json).
+[[send_email]]
+name = "EMAIL"
+destination_address = "Xiaowen.Tan@utdallas.edu"

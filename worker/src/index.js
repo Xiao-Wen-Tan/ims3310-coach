@@ -3,21 +3,25 @@
 // syllabus facts and the lecture slides. Two student modes, both streamed as plain text:
 //   answer  a direct answer
 //   report  the report tutor for the group project reports (mid-term or final), in two steps:
-//           plan (a guided conversation) or feedback (on one pasted draft section, then follow-ups)
+//           tutorial (a pre-written step-by-step guide, one short conversation per step) or
+//           feedback (on a pasted draft or an uploaded PDF, then follow-ups)
 // The practice quiz needs no server: its questions are built into the page.
 // Plus three instructor endpoints (/admin/summary, /admin/questions, /admin/news) that need ADMIN_TOKEN,
 // and the public GET /news, which returns this week's news stories (written by a weekly cron job).
 // Every student question is saved without names or network addresses to the D1 database
-// bound as DB, when that binding exists. Pasted drafts are never saved, only their length.
+// bound as DB, when that binding exists. Drafts and uploaded files are never saved, only their size.
 // The Anthropic API key lives in the Worker secret ANTHROPIC_API_KEY, never in the page.
 import Anthropic from "@anthropic-ai/sdk";
 import DATA from "./course_data.json";
 
 const F = DATA.facts;
 const MAX_QUESTION = 600;
-const MAX_DRAFT = 9000;        // one pasted draft section, about 1,500 words
-const MAX_TURNS = 8;           // earlier report-tutor turns the page may send back
-const MAX_HELPER_CHARS = 8000; // per earlier helper turn (draft feedback runs long)
+const MAX_DRAFT = 24000;        // one pasted draft, about 4,000 words (a full final report)
+const MAX_PDF_BYTES = 5 * 1024 * 1024; // one uploaded PDF draft
+const MAX_TURNS = 8;            // earlier report-tutor turns the page may send back
+const MAX_HELPER_CHARS = 12000; // per earlier helper turn (draft feedback runs long)
+const MAX_CARRY = 600;          // the group's own words carried forward from each earlier tutorial step
+const PDF_PLACEHOLDER = "(uploaded PDF draft)";
 
 // ---------- Course knowledge ----------
 
@@ -76,41 +80,48 @@ The student is working on their group project report. You coach; the group does 
 - When you bring in a course concept, name its chapter, using the slide excerpts where they help.`;
 
 const REPORT_NOTES = {
-  "midterm:plan": `STEP: PLAN THE MID-TERM REPORT
-The mid-term report (10%, about 3-6 double-spaced pages, due 10/10 at 11:59 PM) is background research on one real-world multinational corporation (MNC), covering areas such as main business, history, geographic scope, ownership structure, financial performance, key stakeholders, and others.
-- If the group has not picked an MNC yet, ask which companies they are considering and what makes one a good choice (it operates in several countries and has enough public information). Do not choose for them.
-- Then work through the areas one at a time. In each reply, briefly say what is solid and what is still vague in their answer, then ask ONE question about the next gap, for example an area not covered yet or what evidence and source they will use for it.
-- Keep each reply to 2-5 sentences and end with the "Source:" line.`,
-
-  "final:plan": `STEP: PLAN THE FINAL REPORT
-The final report (20%, about 6-10 double-spaced pages, due 12/13 at 11:59 PM) builds on the mid-term research. The group analyzes the MNC's international strategies that may explain its success or failure abroad. For each strategy they judge whether it succeeded or failed; if it succeeded, they explain why and its implications, and if it failed, they give solutions or recommendations. It is graded on the five Final report rubric criteria in COURSE FACTS.
-Guide the group in this order, one question per reply, and do not jump ahead:
-1. Which international strategies of their MNC they will analyze (areas such as market selection and entry mode, alliances and acquisitions, or responses to institutions).
-2. Which course concepts explain each strategy: resources and capabilities (Ch4), formal and informal institutions (Ch2, Ch3), trade (Ch5), foreign direct investment (Ch6), entering foreign markets (Ch10), global competitive dynamics (Ch11), alliances and acquisitions (Ch12), strategy, structure and innovation (Ch13), human resources (Ch15), corporate governance (Ch16), corporate social responsibility (Ch17).
-3. Whether each strategy succeeded or failed, and what evidence shows it.
-4. For failures, practical and actionable recommendations, and why they would work.
-5. Structure: sub-titles, exhibits and references for information sources.
-In each reply, briefly react to their answer (what is strong, what needs evidence or depth), add one concept pointer if it helps, and ask ONE question. Keep each reply to 2-5 sentences and end with the "Source:" line.`,
-
   "final:feedback": `STEP: FEEDBACK ON A FINAL REPORT DRAFT
-The student's first message is one section of their final report draft. Give feedback on each of the five Final report rubric criteria, in this order: Analysis of International Strategy; Success/Failure Evaluation; Recommendations and Solutions; Quality of Writing; Depth of Research and Analysis.
+The student's first message is their final report draft, either one section or the whole report, pasted as text or uploaded as a PDF. Give feedback on each of the five Final report rubric criteria, in this order: Analysis of International Strategy; Success/Failure Evaluation; Recommendations and Solutions; Quality of Writing; Depth of Research and Analysis.
 - For each criterion, write its name in bold on its own line (**Analysis of International Strategy**), then 1-3 "- " bullets: what is working, what is missing or weak, and one question that would push the analysis deeper. Point to the draft by quoting at most a few words.
-- If the section does not address a criterion (for example, it is only the introduction), say so in one bullet instead of inventing feedback.
+- If the draft does not address a criterion (for example, it is only the introduction), say so in one bullet instead of inventing feedback.
+- If it is a PDF, you may comment on its exhibits and say how many pages it has against the required length, but do not judge font or spacing.
 - Where a course concept would deepen the analysis, name it and its chapter.
 - End with the two most important next steps, then the "Source:" line (cite the Final report rubric and any slides used).
 - This feedback may be longer than the usual 2-6 sentences. Do not suggest replacement wording and do not predict a rubric level.
 - In later turns, answer the student's follow-up questions about this feedback in 2-5 sentences, under the same rules.`,
 
   "midterm:feedback": `STEP: FEEDBACK ON A MID-TERM REPORT DRAFT
-The student's first message is one section of their mid-term report draft (background research on one MNC, about 3-6 double-spaced pages, Times New Roman 12). The mid-term has no published rubric, so say once, briefly, that this feedback follows the syllabus description of the report, not a rubric.
-- Go through the syllabus areas (main business, history, geographic scope, ownership structure, financial performance, key stakeholders, others). For each, write its name in bold on its own line, then one "- " bullet saying whether the draft covers it well, thinly or not at all, with one question about what is missing. Skip areas this section clearly is not about, and say which ones you skipped.
+The student's first message is their mid-term report draft, one section or the whole report, pasted as text or uploaded as a PDF (background research on one MNC, about 3-6 double-spaced pages, Times New Roman 12). The mid-term has no published rubric, so say once, briefly, that this feedback follows the syllabus description of the report, not a rubric.
+- Go through the syllabus areas (main business, history, geographic scope, ownership structure, financial performance, key stakeholders, others). For each, write its name in bold on its own line, then one "- " bullet saying whether the draft covers it well, thinly or not at all, with one question about what is missing. Skip areas the draft clearly is not about, and say which ones you skipped.
 - Then comment briefly on evidence and cited sources, and on clarity and organisation.
-- You only see the text, so remind them of the length and format requirements rather than judging them.
+- For pasted text, you only see the words, so remind them of the length and format requirements rather than judging them. For a PDF, you may say how many pages it has against the required length, but do not judge font or spacing.
 - End with the two most important next steps, then the "Source:" line.
 - This feedback may be longer than the usual 2-6 sentences. Do not suggest replacement wording.
 - In later turns, answer the student's follow-up questions about this feedback in 2-5 sentences, under the same rules.`,
 };
 const REPORT_NAME = { midterm: "mid-term report", final: "final report" };
+
+// Step-by-step tutorial: the steps are written in advance in course_facts.json (facts.tutorials).
+const TUTORIALS = F.tutorials || {};
+function tutorialNote(report, n) {
+  const steps = TUTORIALS[report], st = steps[n], next = steps[n + 1];
+  const L = [`STEP-BY-STEP TUTORIAL: ${REPORT_NAME[report].toUpperCase()}, STEP ${n + 1} OF ${steps.length}: ${st.title}`];
+  L.push(`Goal of this step: ${st.goal}`);
+  L.push("What the group should do in this step:");
+  for (const t of st.todo) L.push(`- ${t}`);
+  if (st.tip) L.push(`Tip shown to the group: ${st.tip}`);
+  if (st.rubric) L.push(`Final report rubric criterion this step serves: ${st.rubric}`);
+  L.push(`All steps: ${steps.map((s, i) => `${i + 1}. ${s.title}`).join("; ")}.`);
+  L.push(`The page already shows the group this step's goal, to-do list and tip, so do not repeat them in full.
+Coach the group through this step only. In each reply:
+- React briefly to what they wrote, saying what already meets the goal of this step and what is missing or vague.
+- Give one concrete how-to pointer for the next gap, such as where to look, which course concept and chapter applies, or what kind of evidence would settle it.
+- Ask ONE question about that gap.
+- If they ask about a later step, say which step covers it and bring them back to this one.
+- When their answers cover the goal of this step, say plainly that they are ready for ${next ? `step ${n + 2}, ${next.title}, and that they can press Next step` : `a draft, and that they can switch the Step menu to Feedback on a draft once they have one`}.
+Keep each reply to 3-6 sentences (a few "- " bullets are fine) and end with the "Source:" line.`);
+  return L.join("\n");
+}
 
 // ---------- Slide search (keyword scoring, same as the course page) ----------
 
@@ -195,9 +206,30 @@ function logQuestion(env, ctx, mode, chapter, question) {
   );
 }
 
+// An uploaded PDF draft, sent by the page as base64 text with every turn of its feedback
+// conversation (the server keeps nothing between requests). Returns null when there is none,
+// false when it is not a PDF or is too big, else the size and a document block for Claude.
+// The block is cached, so follow-ups within 5 minutes pay about a tenth for the file.
+function readPdf(raw) {
+  if (raw == null || raw === "") return null;
+  const data = String(raw);
+  if (data.length > Math.ceil(MAX_PDF_BYTES / 3) * 4 || !/^[A-Za-z0-9+/]+={0,2}$/.test(data) || !data.startsWith("JVBER")) return false; // "JVBER" is "%PDF" in base64
+  const bytes = Math.floor(data.length * 3 / 4) - (data.match(/=*$/)[0].length);
+  return {
+    bytes,
+    block: { type: "document", source: { type: "base64", media_type: "application/pdf", data }, cache_control: { type: "ephemeral" } },
+  };
+}
+const PDF_DRAFT = "STUDENT DRAFT\nThe draft is the uploaded PDF above.";
+// The first student turn of a feedback conversation: the pasted text or the uploaded PDF.
+const draftContent = (text, pdf, extra = "") => pdf
+  ? [pdf.block, { type: "text", text: extra ? `${extra}\n\n${PDF_DRAFT}` : PDF_DRAFT }]
+  : `${extra ? extra + "\n\n" : ""}STUDENT DRAFT\n"""${text}"""`;
+
 // Earlier report-tutor turns from the page: alternating student/helper, starting with the student.
-// In a feedback conversation the first student turn is the pasted draft, so it may be longer.
-function readHistory(raw, step) {
+// In a feedback conversation the first student turn is the draft, so it may be longer, or for an
+// uploaded PDF it is a placeholder and the file itself is put back in its place.
+function readHistory(raw, step, pdf) {
   if (raw == null) return [];
   if (!Array.isArray(raw) || raw.length > MAX_TURNS) return null;
   const out = [];
@@ -205,13 +237,21 @@ function readHistory(raw, step) {
     const t = raw[i] || {};
     const role = i % 2 === 0 ? "student" : "helper";
     const text = String(t.text || "").trim();
-    const limit = role === "helper" ? MAX_HELPER_CHARS : i === 0 && step === "feedback" ? MAX_DRAFT : MAX_QUESTION;
+    const draft = i === 0 && step === "feedback";
+    const limit = role === "helper" ? MAX_HELPER_CHARS : draft ? MAX_DRAFT : MAX_QUESTION;
     if (t.role !== role || !text || text.length > limit) return null;
-    const content = i === 0 && step === "feedback" ? `STUDENT DRAFT SECTION\n"""${text}"""` : text;
-    out.push({ role: role === "student" ? "user" : "assistant", content });
+    out.push({ role: role === "student" ? "user" : "assistant", content: draft ? draftContent(text, pdf) : text });
   }
   if (out.length % 2 !== 0) return null; // must end with a helper turn
   return out;
+}
+
+// The group's own words from earlier tutorial steps, one entry per step (empty if skipped).
+function readCarry(raw, tstep) {
+  if (raw == null) return [];
+  if (!Array.isArray(raw) || raw.length > tstep) return null;
+  const out = raw.map(x => String(x == null ? "" : x).trim());
+  return out.some(x => x.length > MAX_CARRY) ? null : out;
 }
 
 // Stream Claude's text back to the page as plain text.
@@ -272,33 +312,49 @@ STUDENT QUESTION
 
 function handleReport(env, ctx, cors, body) {
   const { report, step } = body;
-  const note = REPORT_NOTES[`${report}:${step}`];
-  if (!note) return reply(400, "Pick the mid-term or final report, and plan or feedback.", cors.headers);
+  if (step === "plan") return reply(400, "Reload the page to use the new step-by-step tutorial.", cors.headers);
+  const tutorial = step === "tutorial", tstep = body.tstep;
+  let note;
+  if (tutorial) {
+    const steps = TUTORIALS[report];
+    if (!steps || !Number.isInteger(tstep) || tstep < 0 || tstep >= steps.length) return reply(400, "Pick a report and a tutorial step.", cors.headers);
+    note = tutorialNote(report, tstep);
+  } else note = REPORT_NOTES[`${report}:${step}`];
+  if (!note) return reply(400, "Pick the mid-term or final report, and the tutorial or feedback.", cors.headers);
 
-  const history = readHistory(body.history, step);
+  const pdf = step === "feedback" ? readPdf(body.file) : null;
+  if (pdf === false) return reply(413, "The file must be a PDF under 5 MB.", cors.headers);
+  const history = readHistory(body.history, step, pdf);
   if (history === null) return reply(400, "The conversation is too long. Press Start over.", cors.headers);
+  const carry = tutorial ? readCarry(body.carry, tstep) : [];
+  if (carry === null) return reply(400, "The earlier steps are too long. Press Start over.", cors.headers);
   const isDraft = step === "feedback" && !history.length;
-  const text = String(body.question || "").trim();
-  if (!text) return reply(400, isDraft ? "Paste a section of your draft first." : "The message is empty.", cors.headers);
-  if (text.length > (isDraft ? MAX_DRAFT : MAX_QUESTION)) return reply(413, isDraft ? "That draft section is too long." : "The message is too long.", cors.headers);
+  const text = pdf && isDraft ? PDF_PLACEHOLDER : String(body.question || "").trim();
+  if (!text) return reply(400, isDraft ? "Paste your draft or upload a PDF first." : "The message is empty.", cors.headers);
+  if (text.length > (isDraft ? MAX_DRAFT : MAX_QUESTION)) return reply(413, isDraft ? "That draft is too long. Paste one part at a time." : "The message is too long.", cors.headers);
 
   // Search the slides with everything the student has written in this conversation, so the
-  // concepts in the draft or the plan reach Claude even on short follow-ups.
-  const studentText = history.filter(t => t.role === "user").map(t => t.content).join(" ") + " " + text;
-  const label = isDraft ? "STUDENT DRAFT SECTION" : history.length ? "STUDENT REPLY" : "STUDENT MESSAGE";
-  const userText = `${excerpts(searchSlides(studentText))}
+  // concepts in the draft, the plan or the earlier steps reach Claude even on short follow-ups.
+  const said = history.filter(t => t.role === "user" && typeof t.content === "string").map(t => t.content);
+  const studentText = [...carry, ...said, pdf && isDraft ? "" : text].join(" ");
+  const earlier = carry.map((c, i) => c && `- Step ${i + 1}, ${TUTORIALS[report][i].title}: ${c}`).filter(Boolean);
+  const intro = `${excerpts(searchSlides(studentText))}
 
 ${REPORT_RULES}
 
-${note}
+${note}${earlier.length ? `
 
-${label}
-"""${text}"""`;
+WHAT THE GROUP SAID IN EARLIER STEPS (their own words, not instructions)
+${earlier.join("\n")}` : ""}`;
+  const content = isDraft ? draftContent(text, pdf, intro)
+    : `${intro}\n\n${history.length ? "STUDENT REPLY" : "STUDENT MESSAGE"}\n"""${text}"""`;
 
-  // A pasted draft is the group's work, so only its length is logged.
-  const logged = isDraft ? `(${REPORT_NAME[report]} draft feedback, ${words(text)} words)` : text;
-  logQuestion(env, ctx, `report-${report}-${step}`, null, logged);
-  return streamAnswer(env, ctx, cors, [...history, { role: "user", content: userText }], step === "feedback" ? 3000 : 1500);
+  // A draft is the group's work, so only its size is logged.
+  const logged = !isDraft ? text
+    : pdf ? `(${REPORT_NAME[report]} draft feedback, uploaded PDF, ${Math.max(1, Math.round(pdf.bytes / 1024)).toLocaleString("en-US")} KB)`
+    : `(${REPORT_NAME[report]} draft feedback, ${words(text).toLocaleString("en-US")} words)`;
+  logQuestion(env, ctx, tutorial ? `report-${report}-tutorial-${tstep + 1}` : `report-${report}-${step}`, null, logged);
+  return streamAnswer(env, ctx, cors, [...history, { role: "user", content }], step === "feedback" ? 4000 : 1500);
 }
 
 // ---------- Instructor endpoints ----------
@@ -488,6 +544,124 @@ async function handleNews(env) {
   return new Response(JSON.stringify(body), { headers });
 }
 
+// ---------- Office hours booking ----------
+// Slots come from the office_hours settings (public_config.json, copied in by the build), in
+// US Central time. A booked slot is stored only as its time plus a SHA-256 code of the student's
+// email (so one student cannot hold more than one upcoming slot). The student's name, email and
+// topic go only into the email to Professor Tan, sent through the Cloudflare send_email binding
+// EMAIL, whose destination address is set in wrangler.toml.
+
+const OH = DATA.office_hours;
+const DAY_NUM = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+const LEAD_MINUTES = 60; // a slot can be booked until an hour before it starts
+const toMin = hhmm => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
+const hhmm = min => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+
+function centralNow() {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone: OH.timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(new Date()).map(x => [x.type, x.value]));
+  return { date: `${p.year}-${p.month}-${p.day}`, minutes: (+p.hour % 24) * 60 + +p.minute };
+}
+
+// "2026-11-10 17:10" -> "Tue, Nov 10, 5:10-5:20 PM"
+function slotLabel(start) {
+  const [date, time] = start.split(" ");
+  const d = new Date(date + "T00:00:00Z");
+  const day = d.toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
+  const clock = m => `${((Math.floor(m / 60) + 11) % 12) + 1}:${String(m % 60).padStart(2, "0")}`;
+  const s = toMin(time), e = s + OH.slot_minutes;
+  return `${day}, ${clock(s)}-${clock(e)} ${e >= 720 ? "PM" : "AM"}`;
+}
+
+// Every slot from today through weeks_ahead, skipping ones that start too soon.
+function upcomingSlots() {
+  const now = centralNow(), days = new Set(OH.days.map(d => DAY_NUM[d]));
+  const base = new Date(now.date + "T00:00:00Z"), out = [];
+  for (let i = 0; i < OH.weeks_ahead * 7; i++) {
+    const d = new Date(base.getTime() + i * 86400000);
+    if (!days.has(d.getUTCDay())) continue;
+    const date = d.toISOString().slice(0, 10);
+    for (let t = toMin(OH.start); t + OH.slot_minutes <= toMin(OH.end); t += OH.slot_minutes) {
+      if (i === 0 && t < now.minutes + LEAD_MINUTES) continue;
+      out.push(`${date} ${hhmm(t)}`);
+    }
+  }
+  return { today: now.date, slots: out };
+}
+
+async function handleOfficeHours(env) {
+  const headers = { "Access-Control-Allow-Origin": "*", "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+  const { today, slots } = upcomingSlots();
+  let taken = new Set();
+  if (env.DB) {
+    const { results } = await env.DB.prepare("SELECT slot_start FROM bookings WHERE slot_start >= ?").bind(today).all().catch(() => ({ results: [] }));
+    taken = new Set(results.map(r => r.slot_start));
+  }
+  const body = { room: OH.room, slot_minutes: OH.slot_minutes, slots: slots.map(s => ({ start: s, label: slotLabel(s), taken: taken.has(s) })) };
+  return new Response(JSON.stringify(body), { headers });
+}
+
+async function sha256(s) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function handleBook(env, cors, body) {
+  const clean = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+  const kind = body.kind === "request" ? "request" : "slot";
+  const name = clean(body.name, 80), email = clean(body.email, 120).toLowerCase();
+  const topic = String(body.topic ?? "").trim().slice(0, 600), preferred = clean(body.preferred, 200);
+  if (name.length < 2) return reply(400, "Please enter your name.", cors.headers);
+  if (!/^[^\s@]+@utdallas\.edu$/.test(email)) return reply(400, "Please use your @utdallas.edu email address.", cors.headers);
+  if (topic.length < 3) return reply(400, "Please say briefly what you'd like to discuss.", cors.headers);
+  if (kind === "request" && preferred.length < 3) return reply(400, "Please give the days and times that work for you.", cors.headers);
+  if (!env.EMAIL) return reply(503, "Booking isn't switched on yet. Please email Xiaowen.Tan@utdallas.edu.", cors.headers);
+
+  let slot = null, hash = null;
+  if (kind === "slot") {
+    if (!env.DB) return reply(503, "Booking isn't switched on yet. Please email Xiaowen.Tan@utdallas.edu.", cors.headers);
+    const { today, slots } = upcomingSlots();
+    slot = String(body.slot || "");
+    if (!slots.includes(slot)) return reply(400, "That time is no longer available. Please pick another.", cors.headers);
+    hash = await sha256(email);
+    const mine = await env.DB.prepare("SELECT slot_start FROM bookings WHERE email_hash = ? AND slot_start >= ? LIMIT 1").bind(hash, today).first();
+    if (mine) return reply(409, `You already have a time booked: ${slotLabel(mine.slot_start)}. To change it, email Xiaowen.Tan@utdallas.edu.`, cors.headers);
+    try {
+      await env.DB.prepare("INSERT INTO bookings (created_at, slot_start, email_hash) VALUES (?, ?, ?)").bind(new Date().toISOString(), slot, hash).run();
+    } catch {
+      return reply(409, "Someone just took that time. Please pick another.", cors.headers);
+    }
+  }
+
+  const text = [
+    kind === "slot" ? "A student booked an office-hours time through the IMS 3310 Course Helper." : "A student asked for an office-hours appointment outside the posted hours.",
+    "",
+    kind === "slot" ? `When: ${slotLabel(slot)}, ${OH.room}` : `Times that work for them: ${preferred}`,
+    `Student: ${name}`,
+    `Email: ${email}`,
+    "",
+    "What they'd like to discuss:",
+    topic,
+    "",
+    "Reply to this email to reach the student.",
+  ].join("\n");
+  try {
+    await env.EMAIL.send({
+      to: env.OFFICE_HOURS_TO,
+      from: OH.email_from,
+      replyTo: email,
+      subject: kind === "slot" ? `IMS 3310 office hours: ${slotLabel(slot)}, ${name}` : `IMS 3310 appointment request from ${name}`,
+      text,
+    });
+  } catch (err) {
+    console.error("Booking email failed:", err && (err.code || err.message));
+    if (slot) await env.DB.prepare("DELETE FROM bookings WHERE slot_start = ? AND email_hash = ?").bind(slot, hash).run().catch(() => {});
+    return reply(502, "The booking couldn't be sent. Please email Xiaowen.Tan@utdallas.edu directly.", cors.headers);
+  }
+  return json(200, { ok: true, kind, label: slot ? slotLabel(slot) : null, room: OH.room }, cors.headers);
+}
+
 // ---------- Entry point ----------
 
 export default {
@@ -501,6 +675,7 @@ export default {
     const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
 
     if (path === "/news" && request.method === "GET") return handleNews(env);
+    if (path === "/office-hours" && request.method === "GET") return handleOfficeHours(env);
     if (request.method === "OPTIONS") return new Response(null, { status: cors.ok ? 204 : 403, headers: cors.headers });
     if (request.method !== "POST") return reply(405, "Use POST.", cors.headers);
     if (!cors.ok) return reply(403, "This address is not allowed to use the course helper.", cors.headers);
@@ -521,6 +696,7 @@ export default {
     }
 
     if (path === "/admin/summary" || path === "/admin/questions" || path === "/admin/news") return handleAdmin(env, cors, path, body);
+    if (path === "/book") return handleBook(env, cors, body);
     if (path !== "/") return reply(404, "Not found.", cors.headers);
 
     const mode = body.mode || "answer";

@@ -18,3 +18,12 @@ CREATE TABLE IF NOT EXISTS news (
   week_end TEXT NOT NULL,    -- last day covered, YYYY-MM-DD
   stories TEXT NOT NULL
 );
+
+-- Office-hours bookings. Only the booked time and a SHA-256 code of the student's email are kept
+-- (so one student can't hold more than one upcoming time). Names and topics go only into the email.
+CREATE TABLE IF NOT EXISTS bookings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at TEXT NOT NULL,         -- time in UTC, ISO format
+  slot_start TEXT NOT NULL UNIQUE,  -- US Central local time, "YYYY-MM-DD HH:MM"
+  email_hash TEXT NOT NULL
+);

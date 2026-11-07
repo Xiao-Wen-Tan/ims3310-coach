@@ -7,8 +7,8 @@ It handles two kinds of student request and two instructor requests. (The practi
 | Request | What it does |
 |---|---|
 | Answer | A direct answer, streamed word by word |
-| Report tutor, plan | Coaches a group through planning its mid-term or final report, one question per reply (up to 5 rounds) |
-| Report tutor, feedback | Feedback on one pasted draft section (up to 9,000 characters, about 1,500 words), by final report rubric criterion or by the mid-term topic list, then follow-up questions |
+| Report tutor, step-by-step tutorial | Coaches a group through a pre-written six-step tutorial for its mid-term or final report, one step at a time (up to 4 rounds per step). The steps are in `tutorials` in `Course coach/course_facts.json` |
+| Report tutor, feedback | Feedback on a pasted draft (up to 24,000 characters, about 4,000 words, enough for a whole report) or an uploaded PDF (up to 5 MB), by final report rubric criterion or by the mid-term topic list, then follow-up questions |
 | Instructor summary | Claude groups the last 7, 30 or 120 days of student questions into themes |
 | Instructor CSV | All saved questions as a spreadsheet file |
 
@@ -56,17 +56,36 @@ You need about 30 minutes, a credit card for the Anthropic account, and a termin
    ```
 9. **Check it.** Open https://wen-tan.com/ims3310-coach/, ask a question, try the report tutor, then open https://wen-tan.com/ims3310-coach/#instructor, enter the password from step 6 and press Summarize.
 
+## Office-hours booking emails
+
+The Office hours tab lets a student book a 10-minute time in the posted office hours, or ask for another time. The server then emails Xiaowen.Tan@utdallas.edu from office-hours@wen-tan.com, with the student's address as the reply-to. Before this works, do this once in the Cloudflare dashboard:
+
+1. Open **wen-tan.com > Email > Email Routing** and turn it on. Cloudflare adds the mail (MX) records it needs to wen-tan.com.
+2. Under **Destination addresses**, add `Xiaowen.Tan@utdallas.edu` and click the link in the verification email Cloudflare sends.
+3. Create the bookings table and deploy:
+   ```
+   npx wrangler d1 execute ims3310-log --remote --file schema.sql
+   npx wrangler deploy
+   ```
+
+The days, times, room, slot length and how many weeks ahead students can book are set in `office_hours` in `Course coach/public_config.json`. Rebuild the page after changing them. Only the booked time and a SHA-256 code of the student's email are stored (so one student can hold one upcoming time). Names and topics go only into the email. To free a slot after a cancellation, delete its row:
+```
+npx wrangler d1 execute ims3310-log --remote --command "DELETE FROM bookings WHERE slot_start = '2026-11-10 17:10'"
+```
+
 ## What it costs
 
 Each request sends the syllabus facts (about 4,000 tokens, a token being roughly three quarters of a word) plus slide excerpts, and gets a short answer back. The syllabus part is cached, so repeat requests within 5 minutes pay about a tenth of the normal price for it. Rough cost per request at the published prices (input / output per million tokens):
 
-| Model (`MODEL` in `wrangler.toml`) | Price | One answer or plan reply | One draft feedback |
-|---|---|---|---|
-| `claude-opus-5` (default) | $5 / $25 | about 2 to 4 cents | about 6 to 9 cents |
-| `claude-sonnet-5` | $2 / $10 | about 1 to 2 cents | about 3 to 4 cents |
-| `claude-haiku-4-5` | $1 / $5 | under 1 cent | about 1 to 2 cents |
+| Model (`MODEL` in `wrangler.toml`) | Price | One answer or tutorial reply | Feedback on a pasted whole report | Feedback on a 10-page PDF |
+|---|---|---|---|---|
+| `claude-opus-5` (default) | $5 / $25 | about 2 to 4 cents | about 8 to 12 cents | about 15 to 25 cents |
+| `claude-sonnet-5` | $2 / $10 | about 1 to 2 cents | about 3 to 5 cents | about 6 to 10 cents |
+| `claude-haiku-4-5` | $1 / $5 | under 1 cent | about 2 to 3 cents | about 3 to 5 cents |
 
-Worked example: 40 students who each ask 25 questions in a term make 1,000 answers, and 10 groups that each use the report tutor for 20 plan replies and 6 draft feedbacks add 200 plan replies and 60 feedbacks. On `claude-opus-5` that is roughly 1,200 x $0.03 + 60 x $0.08 = $41 for the term; on `claude-sonnet-5` roughly $17. Practice quizzes cost nothing. These are estimates; the Anthropic Console's Usage page shows the real figure.
+A PDF costs more than pasted text because Claude reads each page as both text and an image (roughly 1,500 to 3,000 tokens a page), so it also sees tables, charts and layout. The file is sent again with each follow-up question, but it is cached, so a follow-up within 5 minutes costs about 3 to 5 cents on `claude-opus-5`.
+
+Worked example: 40 students who each ask 25 questions in a term make 1,000 answers, and 10 groups that each use the report tutor for 30 tutorial replies, 3 text feedbacks and 3 PDF feedbacks add 300 tutorial replies, 30 text feedbacks and 30 PDF feedbacks. On `claude-opus-5` that is roughly 1,300 x $0.03 + 30 x $0.10 + 30 x $0.20 = $48 for the term; on `claude-sonnet-5` roughly $19. Practice quizzes cost nothing. These are estimates; the Anthropic Console's Usage page shows the real figure.
 
 To switch models, change `MODEL` in `wrangler.toml` and run `npx wrangler deploy` again. `EFFORT` (low, medium, high) trades speed and cost against depth; it is ignored for Haiku.
 
@@ -81,9 +100,9 @@ After changing settings, run `npx wrangler deploy` again.
 
 ## Safeguards and privacy
 
-- Only the course page's address can call the server. Questions are capped at 600 characters, pasted drafts at 9,000 characters, and answers at 2,000 tokens (3,000 for draft feedback).
+- Only the course page's address can call the server. Questions are capped at 600 characters, pasted drafts at 24,000 characters, uploaded drafts at one PDF of 5 MB, and answers at 2,000 tokens (4,000 for draft feedback).
 - The server builds the prompt itself, so it cannot be used as a general-purpose chatbot. Claude is told to answer only course questions, not to do graded work, and to send anything needing a decision to Professor Tan.
-- The question log stores the time, the mode and the question text. For a pasted draft it stores only a line such as "(final report draft feedback, 1,240 words)", never the draft itself. It never stores names, emails or network addresses (the address is used only for the per-minute limit and is not saved). The page tells students not to type personal information.
+- The question log stores the time, the mode and the question text. For a draft it stores only a line such as "(final report draft feedback, 1,240 words)" or "(final report draft feedback, uploaded PDF, 412 KB)", never the draft or the file itself. A PDF can include a cover page with names, so the page asks students to leave the cover page out. It never stores names, emails or network addresses (the address is used only for the per-minute limit and is not saved). The page tells students not to type personal information.
 - UT Dallas guidance (Information Security Office, ai.utdallas.edu) says FERPA-protected or confidential data must not be entered into AI tools the university does not provide. Anonymous course questions are normally not student records, but a student could still type something identifying. Before a live term, confirm the setup with the Information Security Office, or run the same server through a university-provided service (Claude for Education or Amazon Bedrock are on the university's approved list).
 
 ## Testing without an API key

@@ -751,6 +751,143 @@
 }
 ]
 }
+},
+"tutorials": {
+"final": [
+{
+"title": "Bring forward your mid-term research",
+"goal": "A list of your company's main moves abroad.",
+"todo": [
+"Reread your group's mid-term report.",
+"List 4-8 international moves, each with the year, the country or region, and how the company entered (for example exporting, a joint venture, an acquisition or its own subsidiary).",
+"Mark which moves look like successes and which look like problems."
+],
+"tip": "Good places to look are the company's annual reports and investor relations pages, its press releases, and reputable business news.",
+"rubric": "Depth of Research and Analysis"
+},
+{
+"title": "Choose the strategies to analyze",
+"goal": "2-4 international strategies, each named with the market it targets and its syllabus area.",
+"todo": [
+"Group the moves from step 1 into strategies.",
+"Label each strategy with a syllabus area: market selection and entry mode; alliances and acquisitions; formal and informal institutions; international trade and global competitive dynamics; corporate governance and social responsibility; firm resources and capabilities.",
+"Pick the 2-4 strategies your group can research best."
+],
+"tip": "The syllabus says quality matters more than quantity, so a few strategies analyzed in depth beat many covered thinly.",
+"rubric": "Analysis of International Strategy"
+},
+{
+"title": "Explain each strategy with course concepts",
+"goal": "For each strategy, why the company did it, explained with at least one course concept and its chapter.",
+"todo": [
+"For each strategy, pick the concept that explains it best, for example VRIO (Ch4), the institution-based view (Ch2, Ch3), entry modes and first-mover advantages (Ch10), FDI (Ch6), competitive dynamics (Ch11), alliances and acquisitions (Ch12), strategy and structure (Ch13), HR management (Ch15), corporate governance (Ch16) or CSR (Ch17).",
+"In your own notes, write the strategy, the concept, and how the concept explains the company's choice."
+],
+"tip": "Use the lecture slides for each chapter to check you are using the concept the way it was taught in class.",
+"rubric": "Analysis of International Strategy"
+},
+{
+"title": "Judge success or failure with evidence",
+"goal": "A verdict for each strategy (succeeded or failed), backed by evidence with a source.",
+"todo": [
+"Decide what success means for each strategy, for example sales or market share in that country, profit, growth, or staying in versus leaving the market.",
+"Find 1-3 pieces of evidence for each verdict and note the source of each.",
+"Note what your evidence cannot show."
+],
+"tip": "Numbers over several years tell you more than one year, and the company's own reports are stronger evidence than opinion pieces.",
+"rubric": "Success/Failure Evaluation"
+},
+{
+"title": "Implications or recommendations",
+"goal": "For each success, why it worked and what it implies. For each failure, practical, actionable recommendations and why they would work.",
+"todo": [
+"For a success, explain why it worked and what it means for the company's next moves.",
+"For a failure, say what the company should do, where, and what it would cost or risk.",
+"Link each recommendation to a course concept."
+],
+"tip": "A recommendation is actionable when a manager could start on it: who acts, what changes, and how you would know it worked.",
+"rubric": "Recommendations and Solutions"
+},
+{
+"title": "Plan the structure",
+"goal": "Your group's own outline with sub-titles, 1-3 exhibits and a reference for every fact and number.",
+"todo": [
+"Draft sub-titles that follow your strategies.",
+"Plan 1-3 exhibits, such as a table, a chart or a timeline.",
+"Check that every fact and number has a reference.",
+"Remember the length and format: about 6-10 double-spaced pages, Times New Roman 12, due 12/13 at 11:59 PM."
+],
+"tip": "When you have a draft, switch the Step menu to Feedback on a draft for comments against the rubric.",
+"rubric": "Quality of Writing"
+}
+],
+"midterm": [
+{
+"title": "Choose your company",
+"goal": "One real-world multinational corporation (MNC) that operates in several countries and has enough public information.",
+"todo": [
+"List 2-3 companies your group is considering.",
+"For each, check that it operates in several countries.",
+"For each, check that you can find its annual reports and news coverage."
+],
+"tip": "Your group chooses the company. The final report builds on this research, so pick one with clear international moves to analyze later.",
+"rubric": null
+},
+{
+"title": "Gather your sources",
+"goal": "A list of the sources your group will use.",
+"todo": [
+"Find the company's annual report or investor relations page.",
+"Find the company's own website pages on its business and history.",
+"Find 2-3 reputable news or business articles about it.",
+"Note each source's title and date as you go, for your references."
+],
+"tip": "Prefer recent, first-hand sources, such as the company's own reports, over blogs or summaries of summaries.",
+"rubric": null
+},
+{
+"title": "Main business and history",
+"goal": "What the company sells, its industry and mission, and its key milestones, especially international ones.",
+"todo": [
+"Describe its main products or services and its industry.",
+"Find its mission statement.",
+"List its key milestones, marking when it first went abroad."
+],
+"tip": "A short timeline in your notes makes the history section easier to write and to check.",
+"rubric": null
+},
+{
+"title": "Geographic scope and ownership structure",
+"goal": "Where the company operates and how it is owned.",
+"todo": [
+"List the countries or regions where it operates and how it operates there.",
+"Describe its ownership: parent and subsidiaries, public or private, and major shareholders."
+],
+"tip": "Annual reports usually list subsidiaries and the main shareholders.",
+"rubric": null
+},
+{
+"title": "Financial performance and key stakeholders",
+"goal": "How the company has performed financially, and who its key stakeholders are.",
+"todo": [
+"Collect revenue and profit for several years, and by region if the reports give it.",
+"Identify its key stakeholders: customers, suppliers, employees and competitors."
+],
+"tip": "Several years of figures show a trend; a single year does not.",
+"rubric": null
+},
+{
+"title": "Organize and check the format",
+"goal": "Your group's outline with a sub-title for each area and a reference list.",
+"todo": [
+"Give each area its own sub-title.",
+"Check that every fact and number has a reference.",
+"Remember the length and format: about 3-6 double-spaced pages, Times New Roman 12, due 10/10 at 11:59 PM."
+],
+"tip": "When you have a draft, switch the Step menu to Feedback on a draft.",
+"rubric": null
+}
+]
 }
 },
 "slides": [
@@ -1908,5 +2045,18 @@
 "slides": "17-18",
 "text": "(slide 17) Chapter 16 Corporate Governance | Governance Mechanisms | A. Internal Governance | B. External Governance | Market for Corporate Control | Takeover market | M&A role | Anti-takeover defenses | External Monitors | Financial analysts | Creditors | Rating agencies | Auditors | Media | Regulators\n(slide 18) Chapter 17 Corporate Social Responsibility | CSR/CSI/ESG/CSP | Stakeholder \uff08primary/secondary\uff09 | Shareholder primacy v.s. stakeholder primacy | CSR as a strategy (moral capital/insurance effect)"
 }
-]
+],
+"office_hours": {
+"days": [
+"Tue",
+"Thu"
+],
+"start": "17:00",
+"end": "17:30",
+"slot_minutes": 10,
+"room": "JSOM 13.321",
+"weeks_ahead": 2,
+"timezone": "America/Chicago",
+"email_from": "office-hours@wen-tan.com"
+}
 }
