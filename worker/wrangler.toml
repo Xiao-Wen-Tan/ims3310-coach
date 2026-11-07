@@ -5,12 +5,21 @@ compatibility_date = "2026-11-01"
 [vars]
 # Pages allowed to call this helper (comma-separated, no trailing slash).
 ALLOWED_ORIGINS = "https://wen-tan.com,https://www.wen-tan.com,https://xiao-wen-tan.github.io"
-# Claude model and effort. claude-haiku-4-5 is about 5x cheaper per question.
+# Claude model and effort. claude-sonnet-5 costs about 40% and claude-haiku-4-5 about 20%
+# of claude-opus-5 per question (Haiku ignores EFFORT). See README.md for a cost example.
 MODEL = "claude-opus-5"
 EFFORT = "low"
 
-# At most 5 questions per minute from one network address.
+# At most 5 requests per minute from one network address.
 [[ratelimits]]
 name = "ASK_LIMITER"
 namespace_id = "3310"
 simple = { limit = 5, period = 60 }
+
+# Anonymous question log (Cloudflare D1). Create it with
+#   npx wrangler d1 create ims3310-log
+# then paste the database_id it prints below. See README.md, step 5.
+[[d1_databases]]
+binding = "DB"
+database_name = "ims3310-log"
+database_id = "PASTE-THE-ID-FROM-d1-create-HERE"
