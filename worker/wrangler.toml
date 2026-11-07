@@ -13,6 +13,10 @@ ALLOWED_ORIGINS = "https://wen-tan.com,https://www.wen-tan.com,https://xiao-wen-
 MODEL = "claude-opus-5"
 EFFORT = "low"
 
+# Weekly "News this week" stories: Saturdays at 13:00 UTC (7-8 AM Central), covering the past 7 days.
+[triggers]
+crons = ["0 13 * * 6"]
+
 # At most 5 requests per minute from one network address.
 [[ratelimits]]
 name = "ASK_LIMITER"

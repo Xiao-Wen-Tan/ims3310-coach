@@ -5,7 +5,8 @@
 //   report  the report tutor for the group project reports (mid-term or final), in two steps:
 //           plan (a guided conversation) or feedback (on one pasted draft section, then follow-ups)
 // The practice quiz needs no server: its questions are built into the page.
-// Plus two instructor endpoints (/admin/summary, /admin/questions) that need ADMIN_TOKEN.
+// Plus three instructor endpoints (/admin/summary, /admin/questions, /admin/news) that need ADMIN_TOKEN,
+// and the public GET /news, which returns this week's news stories (written by a weekly cron job).
 // Every student question is saved without names or network addresses to the D1 database
 // bound as DB, when that binding exists. Pasted drafts are never saved, only their length.
 // The Anthropic API key lives in the Worker secret ANTHROPIC_API_KEY, never in the page.
@@ -320,6 +321,8 @@ async function handleAdmin(env, cors, path, body) {
   if (!tokenOk(env, body.token)) return reply(403, "Wrong instructor password.", cors.headers);
   if (!env.DB) return reply(503, "The question log database is not set up yet.", cors.headers);
 
+  if (path === "/admin/news") return json(200, await generateNews(env), cors.headers);
+
   if (path === "/admin/questions") {
     const { results } = await env.DB.prepare("SELECT ts, mode, chapter, question FROM questions ORDER BY ts DESC LIMIT 5000").all();
     const csv = ["time_utc,mode,chapter,question", ...results.map(r => [r.ts, r.mode, r.chapter, r.question].map(csvCell).join(","))].join("\r\n");
@@ -348,14 +351,156 @@ async function handleAdmin(env, cors, path, body) {
   }
 }
 
+// ---------- News this week ----------
+// Once a week (cron in wrangler.toml) Claude searches the web for the 1-2 biggest international
+// business events of the past 7 days and links each to a course chapter. Two calls: a research
+// call with web search, then a formatting call that returns JSON. A story is saved only if its
+// date is inside the week, its chapter is taught in the course, and at least one of its source
+// links came from the search results (so links are never made up). If no story passes, nothing
+// is saved and the page keeps showing the previous week.
+
+// Chapter titles, taken from the schedule the same way the course page does ("Ch5 International Trade").
+const CH_TITLE = {};
+for (const r of F.schedule) for (const m of r.topic.matchAll(/Ch(\d+) ([^;(]+)/g)) CH_TITLE[m[1]] ??= m[2].trim();
+const CHAPTER_LIST = Object.entries(CH_TITLE).sort((a, b) => a[0] - b[0]).map(([n, t]) => `Ch${n} ${t}`).join("; ");
+
+const NEWS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["stories"],
+  properties: {
+    stories: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["headline", "date", "summary", "chapter", "concept", "why", "sources"],
+        properties: {
+          headline: { type: "string" },
+          date: { type: "string", format: "date" },
+          summary: { type: "string" },
+          chapter: { type: "integer" },
+          concept: { type: "string" },
+          why: { type: "string" },
+          sources: {
+            type: "array",
+            items: { type: "object", additionalProperties: false, required: ["title", "url"], properties: { title: { type: "string" }, url: { type: "string" } } },
+          },
+        },
+      },
+    },
+  },
+};
+const NEWS_LIMITS = { headline: 160, summary: 900, concept: 100, why: 500 };
+
+const isoDay = d => d.toISOString().slice(0, 10);
+const normUrl = u => String(u || "").trim().replace(/#.*$/, "").replace(/\/+$/, "").toLowerCase();
+
+async function generateNews(env) {
+  if (!env.DB) return { saved: false, reason: "The database is not set up." };
+  const end = new Date();
+  const start = new Date(end.getTime() - 6 * 86400000);
+  const week_start = isoDay(start), week_end = isoDay(end);
+  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+
+  // 1. Research with web search. A long search turn can pause; send it back to continue.
+  const ask = `Today is ${week_end}. Find the one or two most significant international business events that happened between ${week_start} and ${week_end} (inclusive). They are for students in an undergraduate International Business course (IMS 3310 at UT Dallas).
+
+Good picks: trade policy and tariffs, cross-border mergers, acquisitions and foreign direct investment, a multinational entering or leaving a country, sanctions and export controls, major currency or commodity moves, global supply chain shifts, and large corporate governance or social responsibility cases at multinationals. Prefer events with wide coverage from reputable outlets (wire services, major business papers, official sources). Skip purely domestic politics, opinion pieces and rumors.
+
+For each event, report:
+- what happened, in neutral factual terms supported by the sources, and the date it happened
+- the source articles you used, with their exact titles and URLs from your search results
+- the one course chapter that best helps explain it, chosen from this list: ${CHAPTER_LIST}
+- the specific concept from that chapter, and two sentences on why the event illustrates it
+
+Only use events dated inside the window. Do not speculate beyond what the sources say. Do not use em-dashes.`;
+  const messages = [{ role: "user", content: ask }];
+  const urls = new Set();
+  let research = "";
+  try {
+    for (let round = 0; round < 4; round++) {
+      const msg = await client.beta.messages.stream(baseRequest({ ...env, EFFORT: "medium" }, {
+        max_tokens: 16000,
+        tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 8 }],
+        messages,
+      })).finalMessage();
+      for (const b of msg.content) {
+        if (b.type === "web_search_tool_result" && Array.isArray(b.content)) for (const r of b.content) if (r.url) urls.add(normUrl(r.url));
+        if (b.type === "text") research += b.text;
+      }
+      if (msg.stop_reason === "refusal") return { saved: false, reason: "The research request was declined." };
+      if (msg.stop_reason !== "pause_turn") break;
+      messages.push({ role: "assistant", content: msg.content });
+    }
+  } catch (err) {
+    logError(err);
+    return { saved: false, reason: "The news search failed." };
+  }
+  if (!research.trim() || !urls.size) return { saved: false, reason: "The search found nothing to report." };
+
+  // 2. Turn the research notes into JSON.
+  let stories;
+  try {
+    const msg = await client.beta.messages.create(baseRequest(env, {
+      max_tokens: 4000,
+      output_config: { format: { type: "json_schema", schema: NEWS_SCHEMA } },
+      messages: [{ role: "user", content: `Convert these research notes into at most two stories for a course news page. Use only facts in the notes. Write for undergraduates in plain, neutral language with no em-dashes.
+- headline: newspaper style, under 110 characters
+- date: the date the event happened, YYYY-MM-DD
+- summary: 2-3 sentences on what happened
+- chapter: the chapter number only (for example 5)
+- concept: the chapter concept, a few words
+- why: 1-2 sentences linking the event to that concept
+- sources: the articles from the notes, with their exact titles and URLs
+
+RESEARCH NOTES
+"""${research}"""` }],
+    }));
+    if (msg.stop_reason !== "end_turn") return { saved: false, reason: `The formatting step stopped early (${msg.stop_reason}).` };
+    stories = JSON.parse(msg.content.filter(b => b.type === "text").map(b => b.text).join("")).stories;
+  } catch (err) {
+    logError(err);
+    return { saved: false, reason: "The formatting step failed." };
+  }
+
+  const ok = [];
+  for (const s of Array.isArray(stories) ? stories : []) {
+    const sources = (s.sources || []).filter(x => /^https?:\/\//i.test(x.url) && urls.has(normUrl(x.url))).slice(0, 4);
+    const tooLong = Object.entries(NEWS_LIMITS).some(([k, n]) => !String(s[k] || "").trim() || String(s[k]).length > n);
+    if (!sources.length || tooLong || !CH_TITLE[s.chapter] || !(s.date >= week_start && s.date <= week_end)) continue;
+    ok.push({ headline: s.headline.trim(), date: s.date, summary: s.summary.trim(), chapter: s.chapter, concept: s.concept.trim(), why: s.why.trim(), sources });
+    if (ok.length === 2) break;
+  }
+  if (!ok.length) return { saved: false, reason: "No story passed the checks (date in the week, a course chapter, and a source link from the search)." };
+
+  await env.DB.prepare("INSERT INTO news (created_at, week_start, week_end, stories) VALUES (?, ?, ?, ?)")
+    .bind(new Date().toISOString(), week_start, week_end, JSON.stringify(ok)).run();
+  return { saved: true, stories: ok };
+}
+
+// Public and read-only, so any page may read it.
+async function handleNews(env) {
+  const headers = { "Access-Control-Allow-Origin": "*", "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=1800" };
+  let row = null;
+  if (env.DB) row = await env.DB.prepare("SELECT created_at, week_start, week_end, stories FROM news ORDER BY id DESC LIMIT 1").first().catch(() => null);
+  const body = row ? { created_at: row.created_at, week_start: row.week_start, week_end: row.week_end, stories: JSON.parse(row.stories) } : { stories: [] };
+  return new Response(JSON.stringify(body), { headers });
+}
+
 // ---------- Entry point ----------
 
 export default {
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil(generateNews(env).then(r => console.log("Weekly news:", r.saved ? `${r.stories.length} saved` : r.reason)));
+  },
+
   async fetch(request, env, ctx) {
     const origin = request.headers.get("Origin") || "";
     const cors = corsHeaders(origin, env);
     const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
 
+    if (path === "/news" && request.method === "GET") return handleNews(env);
     if (request.method === "OPTIONS") return new Response(null, { status: cors.ok ? 204 : 403, headers: cors.headers });
     if (request.method !== "POST") return reply(405, "Use POST.", cors.headers);
     if (!cors.ok) return reply(403, "This address is not allowed to use the course helper.", cors.headers);
@@ -375,7 +520,7 @@ export default {
       return reply(400, "Send JSON like {\"question\": \"...\"}.", cors.headers);
     }
 
-    if (path === "/admin/summary" || path === "/admin/questions") return handleAdmin(env, cors, path, body);
+    if (path === "/admin/summary" || path === "/admin/questions" || path === "/admin/news") return handleAdmin(env, cors, path, body);
     if (path !== "/") return reply(404, "Not found.", cors.headers);
 
     const mode = body.mode || "answer";
