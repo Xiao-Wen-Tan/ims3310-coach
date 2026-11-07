@@ -1,6 +1,9 @@
 name = "ims3310-helper"
 main = "src/index.js"
 compatibility_date = "2026-11-01"
+# Serve at https://ims3310-helper.<subdomain>.workers.dev, with no extra per-version preview addresses.
+workers_dev = true
+preview_urls = false
 
 [vars]
 # Pages allowed to call this helper (comma-separated, no trailing slash).
@@ -22,4 +25,4 @@ simple = { limit = 5, period = 60 }
 [[d1_databases]]
 binding = "DB"
 database_name = "ims3310-log"
-database_id = "PASTE-THE-ID-FROM-d1-create-HERE"
+database_id = "1040c70c-1193-4468-8f60-ad4b0995f999"
