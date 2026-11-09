@@ -1124,7 +1124,7 @@ async function loadNews() {
   box.innerHTML = `<div class="newsgrid solo"><p class="empty">Loading this week's stories...</p></div>`;
   let d = null;
   try { const res = await fetch(WORKER_URL.replace(/\/+$/, "") + "/news"); if (res.ok) d = await res.json(); } catch (e) {}
-  if (!d || !Array.isArray(d.stories) || !d.stories.length) return notReady(d ? "Check back on Saturday." : "Couldn't reach the helper server.");
+  if (!d || !Array.isArray(d.stories) || !d.stories.length) return notReady(d ? "New stories are added every Sunday and Wednesday." : "Couldn't reach the helper server.");
   newsState = "done";
   const story = (s, i) => `<article class="story${i === 0 ? " lead" : ""}">
       <p class="when">${esc(fmtDay(s.date))}</p>
@@ -1137,7 +1137,7 @@ async function loadNews() {
       <ul class="sources">${s.sources.map(x => `<li><a href="${esc(safeUrl(x.url))}" target="_blank" rel="noopener">${esc(x.title || x.url)}</a></li>`).join("")}</ul>
     </article>`;
   box.innerHTML = `<div class="newsgrid${d.stories.length === 1 ? " solo" : ""}">${d.stories.map(story).join("")}</div>
-    <p class="fine newsfoot">Events from ${esc(fmtDay(d.week_start))} to ${esc(fmtDay(d.week_end))}. Summaries are written by AI from news reports each Saturday. Read the linked sources before citing anything.</p>`;
+    <p class="fine newsfoot">Events from ${esc(fmtDay(d.week_start))} to ${esc(fmtDay(d.week_end))}. Summaries are written by AI from news reports every Sunday and Wednesday. Read the linked sources before citing anything.</p>`;
   box.onclick = e => {
     const b = e.target.closest(".courselink button"); if (!b) return;
     const s = d.stories[+b.dataset.i];
