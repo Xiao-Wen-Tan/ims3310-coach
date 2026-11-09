@@ -17,9 +17,8 @@ OFFICE_HOURS_TO = "Xiaowen.Tan@utdallas.edu"
 
 # "News this week" stories: Sundays and Wednesdays at 13:00 UTC (7-8 AM Central), each covering the
 # past 7 days. Cloudflare counts weekdays from 1 = Sunday, so day names are used to avoid mistakes.
-# The second entry is a one-time first run (Mon 9 Nov, 18:50 UTC); remove it after that day.
 [triggers]
-crons = ["0 13 * * SUN,WED", "50 18 9 NOV *"]
+crons = ["0 13 * * SUN,WED"]
 
 # At most 5 requests per minute from one network address.
 [[ratelimits]]
