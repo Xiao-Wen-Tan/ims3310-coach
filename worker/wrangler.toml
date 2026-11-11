@@ -18,8 +18,11 @@ OFFICE_HOURS_TO = "xiaowen.tan@utdallas.edu"
 
 # "News this week" stories: Sundays and Wednesdays at 13:00 UTC (7-8 AM Central), each covering the
 # past 7 days. Cloudflare counts weekdays from 1 = Sunday, so day names are used to avoid mistakes.
+# Discussion board: 0, 13, 14 and 23 UTC every day. The server converts to US Central time and acts
+# only on Monday 8 AM (open), Wednesday 6 PM (nudge) and Friday 6 PM (summary), in summer and winter
+# time alike. The second entry must match BOARD_CRON in src/index.js.
 [triggers]
-crons = ["0 13 * * SUN,WED"]
+crons = ["0 13 * * SUN,WED", "0 0,13,14,23 * * *"]
 
 # At most 5 requests per minute from one network address.
 [[ratelimits]]

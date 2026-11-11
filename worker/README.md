@@ -2,7 +2,7 @@
 
 This small server sits between the course page and Claude. The page sends it a student's request; the server adds the syllabus facts and the most relevant lecture-slide excerpts, asks Claude, and sends the answer back. The Anthropic API key is stored as a Cloudflare secret, so it never appears in the page or in this repository.
 
-It handles two kinds of student request and two instructor requests. (The practice quiz is built into the page and does not use this server.)
+It handles two kinds of student request and two instructor requests, plus the weekly discussion board (see "Discussion board" below). (The practice quiz is built into the page and does not use this server.)
 
 | Request | What it does |
 |---|---|
@@ -74,6 +74,29 @@ The days, times, room, slot length and how many weeks ahead students can book ar
 npx wrangler d1 execute ims3310-log --remote --command "DELETE FROM bookings WHERE slot_start = '2026-11-10 17:10'"
 ```
 
+## Discussion board
+
+The Discussion tab runs one guided discussion a week. A bot labelled "Course discussion bot" follows the instructions in `AI in teaching talk/prompts/discussion bot instructions v1.md` (the build copies the text below its `---` line into `course_data.json`). It has four jobs:
+
+| Job | When | What it does |
+|---|---|---|
+| Open | Monday 8 AM Central, or the instructor's Open button | Writes the opening post from that week's chapter, the first slides of that chapter, the latest "News this week" story (or the chapter alone if there is none) and the week's discussion goal |
+| Reply | Right after each student's new post | One short reply with one follow-up question. Never to a reply or to the bot's own posts. A post the bot judges disrespectful, off-topic or personal is flagged and hidden until the instructor restores it |
+| Nudge | Wednesday 6 PM Central, or the Nudge now button | A fresh angle, if the thread has had no post for 48 hours |
+| Summary | Friday 6 PM Central, or the Write summary now button | The class part is posted to the thread. The part for Professor Tan only (posts, replies, a note and suggested points per student) is shown only in the instructor view |
+
+Weeks follow the Fall 2024 schedule. The Monday job opens a thread only on the Monday of a 2024 schedule week that has a chapter, so outside Fall 2024 it never opens one, and threads are opened from the instructor view instead. Weeks without a chapter (exams, project instructions and presentations, Thanksgiving) are skipped.
+
+**Setting it up** (each step changes the live server or database):
+
+1. Create the new tables: `npx wrangler d1 execute ims3310-log --remote --file schema.sql` (all tables use `IF NOT EXISTS`, so existing data is kept).
+2. Deploy: `npx wrangler deploy`. This also adds the second cron schedule in `wrangler.toml`.
+3. Open https://wen-tan.com/ims3310-coach/#instructor, enter the password, press Load in the Discussion board box, open "Roster and sign-in codes" and paste the roster, one student per line as `First name, Last name, email` (a paste from a spreadsheet with three columns works too). A file with each student's code downloads. The codes are stored only as SHA-256 codes, so they cannot be shown again; "New code" makes a fresh one for a student who lost theirs.
+4. Send each student their code, for example through eLearning. Students sign in on the Discussion tab with their @utdallas.edu email and code.
+5. Before each week, pick the week, write the discussion goal and the points rule, and press Save. The points rule is used only in the private summary; if it is empty, the summary gives counts and notes but no suggested points.
+
+**Gradebook CSV.** One row per roster student per thread, with columns week, student name, email, posts, replies, suggested points and an empty final points column for the instructor. Counts leave out hidden posts.
+
 ## What it costs
 
 Each request sends the syllabus facts (about 4,000 tokens, a token being roughly three quarters of a word) plus slide excerpts, and gets a short answer back. The syllabus part is cached, so repeat requests within 5 minutes pay about a tenth of the normal price for it. Rough cost per request at the published prices (input / output per million tokens):
@@ -88,13 +111,26 @@ A PDF costs more than pasted text because Claude reads each page as both text an
 
 Worked example: 40 students who each ask 25 questions in a term make 1,000 answers, and 10 groups that each use the report tutor for 30 tutorial replies, 3 text feedbacks and 3 PDF feedbacks add 300 tutorial replies, 30 text feedbacks and 30 PDF feedbacks. On `claude-opus-5` that is roughly 1,300 x $0.03 + 30 x $0.10 + 30 x $0.20 = $48 for the term; on `claude-sonnet-5` roughly $19. Practice quizzes cost nothing. These are estimates; the Anthropic Console's Usage page shows the real figure.
 
+**Discussion board, 40 students.** Each bot request sends the bot instructions and that week's slide excerpts (about 2,000 to 3,500 tokens) plus posts. These estimates assume no caching. In one week with 40 original posts and about 60 replies:
+
+| Job | Requests a week | Tokens in / out per request | `claude-opus-5` | `claude-sonnet-5` |
+|---|---|---|---|---|
+| Open | 1 | about 3,000 / 300 | about 2 cents | under 1 cent |
+| Reply | 40 (one per original post; replies get none) | about 4,500 / 150 | about $1.05 | about 40 cents |
+| Nudge | 0 or 1 | about 8,000 / 150 | about 4 cents | about 2 cents |
+| Summary | 1 | about 19,000 / 2,000 | about 15 cents | about 6 cents |
+| **Week** | | | **about $1.30** | **about 50 cents** |
+
+Ten weeks of the Fall 2024 schedule have a chapter, so a full term is about $13 on `claude-opus-5` and about $5 on `claude-sonnet-5`, on top of the worked example above.
+
 To switch models, change `MODEL` in `wrangler.toml` and run `npx wrangler deploy` again. `EFFORT` (low, medium, high) trades speed and cost against depth; it is ignored for Haiku.
 
 ## Settings (`wrangler.toml`)
 
 - `ALLOWED_ORIGINS`: the only web pages allowed to call this server.
 - `MODEL`, `EFFORT`: see above.
-- `ASK_LIMITER`: at most 5 requests per minute from one network address.
+- `ASK_LIMITER`: at most 5 requests per minute from one network address. Reading the discussion board and the instructor's board views are not counted, because a classroom shares one address.
+- `[triggers] crons`: the news job (Sundays and Wednesdays) and the discussion board check (four times a day; it acts only on Monday 8 AM, Wednesday 6 PM and Friday 6 PM Central).
 - `DB`: the question-log database from step 5. Remove this block to turn logging off.
 
 After changing settings, run `npx wrangler deploy` again.
@@ -105,7 +141,8 @@ After changing settings, run `npx wrangler deploy` again.
 - The server builds the prompt itself, so it cannot be used as a general-purpose chatbot. Claude is told to answer only course questions, not to do graded work, and to send anything needing a decision to Professor Tan.
 - The question log stores the time, the mode and the question text. For a draft it stores only a line such as "(final report draft feedback, 1,240 words)" or "(final report draft feedback, uploaded PDF, 412 KB)", never the draft or the file itself. A PDF can include a cover page with names, so the page asks students to leave the cover page out. It never stores names, emails or network addresses (the address is used only for the per-minute limit and is not saved). The page tells students not to type personal information.
 - UT Dallas guidance (Information Security Office, ai.utdallas.edu) says FERPA-protected or confidential data must not be entered into AI tools the university does not provide. Anonymous course questions are normally not student records, but a student could still type something identifying. Before a live term, confirm the setup with the Information Security Office, or run the same server through a university-provided service (Claude for Education or Amazon Bedrock are on the university's approved list).
+- **The discussion board does hold student records.** Its tables (`students`, `posts` and the rest) keep names, @utdallas.edu emails and posts, so every board request needs a student sign-in or the instructor password, and nothing on the board is public. Students see classmates' first names only (with a last initial when two share a first name). Claude receives post text and first names, with each student as a short number such as S12 that the server maps back; emails and last names are never sent. Student posts go to Claude inside marked data blocks and the bot is told they are never instructions. Hidden posts never reach Claude. Posts are capped at 1,500 characters and 10 per student in any 24 hours. Because post text with first names is an education record sent to an outside AI service, confirm the board with the Information Security Office before a live term, as above.
 
 ## Testing without an API key
 
-`npx wrangler deploy --dry-run --outdir <folder>` bundles the server without deploying it, so it can be tested offline with a stub in place of Claude.
+`npx wrangler deploy --dry-run --outdir <folder>` bundles the server without deploying it, so it can be tested offline with a stub in place of Claude. The discussion board test (`board-test.mjs` in `IMS3310/.claude/scratch/wrangler-dry`) runs the real `schema.sql` in an in-memory SQLite database and simulates a week: roster, sign-in, opening, 10 posts with bot replies, replies, a flagged post, a hidden post, a nudge, the summary and the CSV, plus the clock times of the scheduled jobs in summer and winter time.

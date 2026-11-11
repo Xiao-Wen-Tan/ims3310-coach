@@ -330,6 +330,29 @@ ol.slides span { display: block; font: .84rem/1.5 var(--sans); color: var(--mute
 .sources li { margin: 0 0 3px; }
 .newsfoot { margin-top: 22px; padding-top: 10px; border-top: 1px solid var(--line); }
 
+/* Discussion board */
+.bsignin { max-width: 440px; border-top: 2px solid var(--ink); padding-top: 14px; }
+.bbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; font: .8rem var(--sans); color: var(--muted); margin-bottom: 10px; }
+.bthread { border-top: 2px solid var(--ink); }
+.bhead { padding: 12px 0 4px; }
+.bhead h3 { font-size: 1.45rem; font-weight: 700; margin: 2px 0 4px; }
+.bpost { border-bottom: 1px solid var(--line); padding: 14px 0; }
+.bpost.lead { border-bottom: 1px solid var(--ink); }
+.bpost.lead .bbody { font-size: 1.06rem; }
+.bmeta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font: .8rem var(--sans); color: var(--muted); margin-bottom: 4px; }
+.bmeta b { color: var(--ink); font-weight: 700; }
+.botlabel { font: 700 .66rem var(--sans); text-transform: uppercase; letter-spacing: .1em; color: var(--link); }
+.bbody { white-space: pre-wrap; overflow-wrap: anywhere; }
+.bheld { font: 600 .8rem var(--sans); color: var(--due); }
+.breplies { display: grid; gap: 12px; margin: 12px 0 0 6px; padding-left: 14px; border-left: 2px solid var(--line); }
+.breplies .bbody { font-size: .96rem; }
+.qwrap textarea.btext { width: 100%; min-height: 96px; resize: vertical; font: 1rem/1.55 var(--body); color: var(--ink); background: transparent; border: 0; padding: 10px 4px 4px; outline: none; }
+.bcompose { margin-top: 18px; }
+.breplybox { margin-top: 10px; }
+.bmsg:empty { display: none; }
+.bmsg { margin: 10px 0 0; padding: 8px 12px; border-left: 3px solid var(--exam); background: var(--sunk); font: .9rem var(--sans); }
+.adminposts .bpost.off .bbody { color: var(--off); }
+
 .stack { display: grid; gap: 20px; }
 .stack > * { min-width: 0; }
 .summary { white-space: pre-wrap; }
@@ -350,6 +373,7 @@ footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--rule);
     <nav class="tabs" role="tablist" aria-label="Sections">
       <button role="tab" id="tab-ask" data-tab="ask" aria-selected="true">Ask</button>
       <button role="tab" id="tab-news" data-tab="news" aria-selected="false">News this week</button>
+      <button role="tab" id="tab-board" data-tab="board" aria-selected="false">Discussion</button>
       <button role="tab" id="tab-schedule" data-tab="schedule" aria-selected="false">Schedule</button>
       <button role="tab" id="tab-deadlines" data-tab="deadlines" aria-selected="false">Deadlines</button>
       <button role="tab" id="tab-office" data-tab="office" aria-selected="false">Office hours</button>
@@ -415,6 +439,14 @@ footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--rule);
     <div id="news" aria-live="polite"></div>
   </section>
 
+  <section class="panel" id="panel-board" role="tabpanel" aria-labelledby="tab-board" hidden>
+    <div class="paper">
+      <div class="sec-head"><div><span class="kicker">Weekly discussion</span><h2>Discussion board</h2><p class="lede">One question a week, built from that week's chapter and the news. Post your view by Wednesday and reply to at least one classmate by Friday. The course discussion bot, an AI, asks each poster one follow-up question; Professor Tan reads every thread and decides any points.</p></div></div>
+      <div id="board" aria-live="polite"></div>
+      <p class="fine" style="margin-top:16px">Classmates see only your first name. Your posts, with your name and email, are kept for Professor Tan, and post text with first names only is sent to the AI so the bot can reply. Please don't share personal information.</p>
+    </div>
+  </section>
+
   <section class="panel" id="panel-schedule" role="tabpanel" aria-labelledby="tab-schedule" hidden>
     <div class="sec-head">
       <div><span class="kicker">Fall 2024</span><h2>Class schedule</h2><p class="lede">Dates as printed in the 9 Oct 2024 syllabus revision. All classes meet Tue and Thu, 5:30-6:45 PM, JSOM 2.722.</p></div>
@@ -473,7 +505,7 @@ footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--rule);
 
   <section class="panel" id="panel-instructor" hidden>
     <div class="askcol">
-      <div><h2>Instructor view</h2><p class="lede">What students have asked the helper. Questions are stored without names or network addresses.</p></div>
+      <div><h2>Instructor view</h2><p class="lede">What students have asked the helper (stored without names or network addresses), and the discussion board.</p></div>
       <div class="quizpick">
         <div class="row">
           <label for="admintoken" class="hint">Instructor password</label>
@@ -487,6 +519,31 @@ footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--rule);
           <button class="btn ghost" id="csvbtn" type="button">Download all (CSV)</button>
           <button class="btn" id="sumbtn" type="button">Summarize</button>
         </div>
+      </div>
+      <div class="quizpick" id="boardadmin">
+        <div class="row"><p class="minihead grow" style="margin:0">Discussion board</p><button class="btn ghost small" id="bload" type="button">Load</button></div>
+        <p class="fine" id="bstatus" style="margin-top:6px">Enter the password above and press Load.</p>
+        <div class="row" style="margin-top:10px">
+          <label for="bweek" class="hint">Week</label>
+          <select id="bweek" style="flex:1 1 220px;width:0"></select>
+          <button class="btn small" id="bopen" type="button">Open thread for this week</button>
+        </div>
+        <label class="field" style="margin-top:10px"><span>Discussion goal for this week (one sentence, set before the thread opens)</span><input type="text" id="bgoal" maxlength="400"></label>
+        <label class="field"><span>Points rule, used only in the private summary (leave empty for no suggested points)</span><textarea id="brule" rows="2" maxlength="800"></textarea></label>
+        <div class="row"><span class="grow"></span><button class="btn ghost small" id="bsave" type="button">Save goal and rule</button></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn ghost small" id="bposts" type="button">Posts and flags</button>
+          <button class="btn ghost small" id="bnudge" type="button">Nudge now</button>
+          <button class="btn ghost small" id="bsum" type="button">Write summary now</button>
+          <button class="btn ghost small" id="bpriv" type="button">Private summary</button>
+          <button class="btn ghost small" id="bcsv" type="button">Gradebook CSV</button>
+        </div>
+        <details style="margin-top:12px"><summary class="hint" style="cursor:pointer">Roster and sign-in codes</summary>
+          <label class="field" style="margin-top:8px"><span>One student per line: First name, Last name, email (a spreadsheet paste works too)</span><textarea id="broster" rows="5"></textarea></label>
+          <div class="row"><span class="grow"></span><button class="btn ghost small" id="baddroster" type="button">Add students and download their codes</button></div>
+          <div class="row" style="margin-top:8px"><label class="field grow" style="margin:0"><span>New code for one student (the old code stops working)</span><input type="email" id="breissue" placeholder="netid@utdallas.edu"></label><button class="btn ghost small" id="bre" type="button">New code</button></div>
+          <p class="fine" style="margin-top:8px">Codes are shown only once, in the downloaded file. Send each student their own code, for example through eLearning.</p>
+        </details>
       </div>
       <div id="adminout" aria-live="polite"></div>
       <p class="fine"><a href="#ask">Back to the student page</a></p>
@@ -526,6 +583,7 @@ function showTab(name) {
   $("#panel-instructor").hidden = !instructor;
   if (!instructor) { try { localStorage.setItem("coach.tab", name); } catch (e) {} }
   if (name === "news") loadNews();
+  if (name === "board" && window.loadBoard) window.loadBoard();
   if (name === "office" && window.loadOfficeHours) window.loadOfficeHours();
 }
 /* After a tab switch, bring the top of the new section into view if the page was scrolled past it. */
@@ -1407,6 +1465,121 @@ async function loadNews() {
   window.loadOfficeHours = () => { if (!loaded) loadSlots(); };
 }
 
+/* ---------- Discussion board ---------- */
+/* Students sign in with their UT Dallas email and the code from Professor Tan. The session token
+   is kept in this browser. The server sends first names only; the bot's posts are labelled. */
+const download = (blob, name) => {
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement("a"), { href: url, download: name });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+const stamp = () => new Date().toISOString().slice(0, 10);
+const shortTime = iso => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+{
+  const box = $("#board");
+  const BKIND = { open: "This week's question", nudge: "A new angle", summary: "End-of-week summary" };
+  let session = null; try { session = localStorage.getItem("board.session"); } catch (e) {}
+  let data = null, note = "", later = [];
+  const keep = v => { session = v; try { v ? localStorage.setItem("board.session", v) : localStorage.removeItem("board.session"); } catch (e) {} };
+
+  function signinForm() {
+    box.innerHTML = `<form class="bsignin" id="bsignin" novalidate>
+      <p>Sign in with your UT Dallas email and the 8-character code Professor Tan sent you.</p>
+      <label class="field"><span>UT Dallas email</span><input type="email" id="bemail" maxlength="120" autocomplete="email" placeholder="netid@utdallas.edu"></label>
+      <label class="field"><span>Code</span><input type="text" id="bcode" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="ABCD-EFGH"></label>
+      <div class="row"><span class="grow"></span><button class="btn" type="submit" id="bsigninbtn">Sign in</button></div>
+      <p class="bmsg" id="bmsg">${esc(note)}</p>
+      <p class="fine" style="margin-top:10px">Lost your code? Email Xiaowen.Tan@utdallas.edu for a new one.</p></form>`;
+    note = "";
+    $("#bsignin").addEventListener("submit", async e => {
+      e.preventDefault();
+      const btn = $("#bsigninbtn"); btn.disabled = true;
+      try {
+        const res = await post("/board/signin", { email: $("#bemail").value, code: $("#bcode").value });
+        if (!res.ok) { $("#bmsg").textContent = await res.text(); return; }
+        keep((await res.json()).session);
+        load();
+      } catch (err) { $("#bmsg").textContent = "Couldn't reach the course helper. Please try again."; }
+      finally { btn.disabled = false; }
+    });
+  }
+
+  function postHtml(p, replies) {
+    const who = p.bot ? `<span class="botlabel">${esc(p.author)}</span>` : `<b>${esc(p.author)}${p.mine ? " (you)" : ""}</b>`;
+    const tag = BKIND[p.kind] ? `<span class="tag">${BKIND[p.kind]}</span>` : "";
+    const held = p.held ? `<p class="bheld">${esc(p.held)}</p>` : "";
+    const canReply = p.kind === "post" && !p.held;
+    return `<article class="bpost${p.kind === "open" ? " lead" : ""}" data-id="${p.id}">
+      <div class="bmeta">${tag}${who}<span>${esc(shortTime(p.time))}</span></div>${held}
+      <div class="bbody">${esc(p.body)}</div>
+      ${replies.length ? `<div class="breplies">${replies.map(r => `<div class="bpost" style="border:0;padding:0">
+        <div class="bmeta">${r.bot ? `<span class="botlabel">${esc(r.author)}</span>` : `<b>${esc(r.author)}${r.mine ? " (you)" : ""}</b>`}<span>${esc(shortTime(r.time))}</span></div>
+        ${r.held ? `<p class="bheld">${esc(r.held)}</p>` : ""}<div class="bbody">${esc(r.body)}</div></div>`).join("")}</div>` : ""}
+      ${canReply ? `<button class="linkbtn" type="button" data-reply="${p.id}">Reply</button><div class="breplybox" data-box="${p.id}" hidden>${composer("r" + p.id, "Reply")}</div>` : ""}
+    </article>`;
+  }
+  const composer = (key, label) => `<div class="qwrap"><textarea class="btext" data-key="${key}" maxlength="${data.max}" placeholder="${label === "Post" ? "Your view, with a reason from the chapter" : "Your reply"}"></textarea>
+    <div class="row"><span class="hint" data-count="${key}">0 / ${data.max.toLocaleString("en-US")}</span><span class="grow"></span><button class="btn small" type="button" data-send="${key}">${label}</button></div>
+    <p class="bmsg" data-msg="${key}"></p></div>`;
+
+  function render() {
+    /* Keep anything the student is typing across a refresh. */
+    const drafts = {}, open = new Set();
+    box.querySelectorAll("textarea.btext").forEach(t => { if (t.value) drafts[t.dataset.key] = t.value; });
+    box.querySelectorAll(".breplybox:not([hidden])").forEach(b => open.add(b.dataset.box));
+    const bar = `<div class="bbar"><span>Signed in as <b>${esc(data.me)}</b>. You can post ${data.left} more time${data.left === 1 ? "" : "s"} in the next 24 hours.</span><button class="linkbtn" type="button" id="bout">Sign out</button></div>`;
+    if (!data.thread) {
+      box.innerHTML = bar + `<div class="bthread"><p class="empty" style="padding-top:14px">No discussion is open right now. Professor Tan opens one each week that has a chapter.</p></div>`;
+    } else {
+      const t = data.thread, top = data.posts.filter(p => p.parent == null);
+      const kids = id => data.posts.filter(p => p.parent === id);
+      box.innerHTML = bar + `<div class="bthread">
+        <div class="bhead"><span class="kicker">Week ${t.week}${t.dates ? " · " + esc(t.dates) : ""}</span><h3>${esc(t.chapter)}</h3>
+          ${t.news ? `<p class="fine">In the news: ${t.news.source ? `<a href="${esc(t.news.source)}" target="_blank" rel="noopener">${esc(t.news.headline)}</a>` : esc(t.news.headline)}</p>` : ""}</div>
+        ${top.map(p => postHtml(p, kids(p.id))).join("")}
+        <div class="bcompose"><p class="minihead">Add your post</p>${composer("new", "Post")}</div></div>`;
+    }
+    box.querySelectorAll("textarea.btext").forEach(t => { if (drafts[t.dataset.key]) { t.value = drafts[t.dataset.key]; count(t); } });
+    open.forEach(id => { const b = box.querySelector(`[data-box="${id}"]`); if (b) b.hidden = false; });
+    $("#bout").onclick = async () => { post("/board/signout", { session }).catch(() => {}); keep(null); data = null; signinForm(); };
+  }
+  const count = t => { box.querySelector(`[data-count="${t.dataset.key}"]`).textContent = `${t.value.length.toLocaleString("en-US")} / ${data.max.toLocaleString("en-US")}`; };
+  box.addEventListener("input", e => { if (e.target.matches("textarea.btext")) count(e.target); });
+  box.addEventListener("click", async e => {
+    const r = e.target.closest("[data-reply]");
+    if (r) { const b = box.querySelector(`[data-box="${r.dataset.reply}"]`); b.hidden = !b.hidden; if (!b.hidden) b.querySelector("textarea").focus(); return; }
+    const s = e.target.closest("[data-send]"); if (!s) return;
+    const key = s.dataset.send, ta = box.querySelector(`textarea[data-key="${key}"]`), msg = box.querySelector(`[data-msg="${key}"]`);
+    const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+    s.disabled = true; msg.textContent = "";
+    try {
+      const parent = key === "new" ? null : +key.slice(1);
+      const res = await post("/board/post", { session, text, parent });
+      if (res.status === 401) { keep(null); data = null; note = "Please sign in again."; return signinForm(); }
+      if (!res.ok) { msg.textContent = await res.text(); return; }
+      ta.value = "";
+      await load();
+      /* The bot replies to a new post within a few seconds. */
+      if (parent == null) { later.forEach(clearTimeout); later = [setTimeout(load, 6000), setTimeout(load, 15000)]; }
+    } catch (err) { msg.textContent = "Couldn't reach the course helper. Please try again."; }
+    finally { s.disabled = false; }
+  });
+
+  async function load() {
+    if (!AI_ON) { box.innerHTML = `<p class="empty">The discussion board isn't switched on yet.</p>`; return; }
+    if (!session) return signinForm();
+    try {
+      const res = await post("/board/thread", { session });
+      if (res.status === 401) { keep(null); data = null; return signinForm(); }
+      if (!res.ok) { box.innerHTML = `<p class="empty">${esc(await res.text())}</p>`; return; }
+      data = await res.json();
+      render();
+    } catch (err) { if (!data) box.innerHTML = `<p class="empty">Couldn't load the discussion. Please try again.</p>`; }
+  }
+  window.loadBoard = load;
+}
+
 /* ---------- Instructor view (#instructor) ---------- */
 async function adminCall(path) {
   const out = $("#adminout");
@@ -1440,6 +1613,111 @@ $("#csvbtn").addEventListener("click", async () => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   $("#adminout").innerHTML = `<div class="ans"><p>Downloaded.</p></div>`;
 });
+
+/* Discussion board controls */
+{
+  const out = $("#adminout");
+  let weeks = [];
+  const say = (html, tag = "Discussion board") => { out.innerHTML = `<div class="ans">${meta(tag, "")}<div class="body">${html}</div></div>`; };
+  async function call(path, extra = {}, quiet = false) {
+    if (!AI_ON) { say("<p>The helper server isn't connected to this page yet.</p>"); return null; }
+    const token = $("#admintoken").value.trim();
+    if (!token) { $("#admintoken").focus(); return null; }
+    if (!quiet) say(`<p class="empty">Working...</p>`);
+    const res = await post(path, { token, ...extra }).catch(() => null);
+    if (!res) { say("<p>Couldn't reach the helper server.</p>"); return null; }
+    if (!res.ok) { say(`<p>${esc(await res.text())}</p>`); return null; }
+    return res;
+  }
+  const status = d => {
+    $("#bstatus").textContent = `${d.students} student${d.students === 1 ? "" : "s"} on the roster. ` +
+      (d.thread ? `Current thread: week ${d.thread.week}, ${d.thread.chapter}, opened ${shortTime(d.thread.opened_at)}.` : "No thread opened yet.");
+  };
+  function fill(d) {
+    weeks = d.weeks;
+    const pick = +$("#bweek").value || (d.thread ? d.thread.week : weeks[0].week);
+    $("#bweek").innerHTML = weeks.map(w => `<option value="${w.week}">Week ${w.week}: ${esc(w.chapter)} (${esc(w.dates)})</option>`).join("");
+    $("#bweek").value = String(pick);
+    $("#bgoal").value = (weeks.find(w => w.week === +$("#bweek").value) || {}).goal || "";
+    $("#brule").value = d.points_rule || "";
+    status(d);
+  }
+  $("#bweek").addEventListener("change", () => { $("#bgoal").value = (weeks.find(w => w.week === +$("#bweek").value) || {}).goal || ""; });
+  async function loadSettings(quiet) {
+    const res = await call("/admin/board/settings", {}, quiet); if (!res) return;
+    fill(await res.json());
+    if (!quiet) out.innerHTML = "";
+  }
+  $("#bload").addEventListener("click", () => loadSettings(false));
+  $("#bsave").addEventListener("click", async () => {
+    if (!weeks.length) return loadSettings(false);
+    const res = await call("/admin/board/settings", { save: true, week: +$("#bweek").value, goal: $("#bgoal").value, points_rule: $("#brule").value }); if (!res) return;
+    fill(await res.json());
+    say(`<p>Saved the goal for week ${+$("#bweek").value} and the points rule.</p>`);
+  });
+  $("#bopen").addEventListener("click", async () => {
+    if (!weeks.length) return loadSettings(false);
+    const res = await call("/admin/board/open", { week: +$("#bweek").value }); if (!res) return;
+    const d = await res.json();
+    say(`<p>Opened the thread for week ${d.week}: ${esc(d.chapter)}. Students now see it on the Discussion tab.</p>`);
+    loadSettings(true);
+  });
+  $("#bnudge").addEventListener("click", async () => { if (await call("/admin/board/nudge")) say("<p>The bot added a nudge post to the current thread.</p>"); });
+  $("#bsum").addEventListener("click", async () => {
+    const res = await call("/admin/board/summary"); if (!res) return;
+    const d = await res.json();
+    say(`<p>Summary written for ${d.students} student${d.students === 1 ? "" : "s"}. The class part is posted to the thread. Press Private summary to see suggested points.</p>`);
+  });
+  $("#bpriv").addEventListener("click", async () => {
+    const res = await call("/admin/board/private"); if (!res) return;
+    const d = await res.json();
+    if (!d.summary) return say("<p>No summary has been written for the current thread yet.</p>");
+    const s = d.summary;
+    say(`<p class="fine">Week ${d.thread.week}, written ${esc(shortTime(s.created_at))}. For Professor Tan only. These are suggestions; you decide the final points.</p>
+      <div class="tablewrap" style="margin:8px 0 14px"><table><thead><tr><th>Student</th><th>Posts</th><th>Replies</th><th>Suggested</th><th>Note</th></tr></thead><tbody>
+      ${s.students.map(x => `<tr><td>${esc(x.name)}</td><td>${x.posts}</td><td>${x.replies}</td><td>${esc(x.suggested_points || "-")}</td><td>${x.unsure ? `<span class="pill exam">Unsure</span> ` : ""}${esc(x.note)}</td></tr>`).join("")}
+      </tbody></table></div><p class="minihead">Posted to the class</p><div class="summary">${esc(s.class_text)}</div>`, "Private summary");
+  });
+  $("#bcsv").addEventListener("click", async () => {
+    const res = await call("/admin/board/csv"); if (!res) return;
+    download(await res.blob(), `IMS3310 discussion gradebook ${stamp()}.csv`);
+    say("<p>Downloaded. Fill in the final points column before copying it into the gradebook.</p>");
+  });
+  async function showPosts() {
+    const res = await call("/admin/board/posts", {}, true); if (!res) return;
+    const d = await res.json();
+    const row = p => `<article class="bpost${p.hidden ? " off" : ""}">
+      <div class="bmeta">${p.flagged ? `<span class="pill exam">Flagged</span>` : ""}${p.hidden ? `<span class="pill due">Hidden</span>` : ""}<b>${esc(p.author)}</b><span>${esc(p.kind)}${p.parent ? ` to #${p.parent}` : ""} · #${p.id} · ${esc(shortTime(p.time))}</span>
+        <span class="grow"></span><button class="btn ghost small" type="button" data-hide="${p.id}" data-on="${p.hidden ? 0 : 1}">${p.hidden ? "Restore" : "Hide"}</button></div>
+      ${p.reason ? `<p class="bheld">Bot's reason: ${esc(p.reason)}</p>` : ""}<div class="bbody">${esc(p.body)}</div></article>`;
+    const flagged = d.posts.filter(p => p.flagged);
+    say(`<p class="fine">Week ${d.thread.week}, ${esc(d.thread.chapter)}. Hidden posts are kept out of the bot's replies and the summary.</p>
+      ${flagged.length ? `<p class="minihead" style="margin-top:12px">Flagged by the bot (${flagged.length})</p>${flagged.map(row).join("")}` : `<p class="fine">No flagged posts.</p>`}
+      <p class="minihead" style="margin-top:16px">All posts (${d.posts.length})</p><div class="adminposts">${d.posts.map(row).join("")}</div>`, "Posts");
+  }
+  $("#bposts").addEventListener("click", () => { say(`<p class="empty">Working...</p>`); showPosts(); });
+  out.addEventListener("click", async e => {
+    const b = e.target.closest("[data-hide]"); if (!b) return;
+    b.disabled = true;
+    if (await call("/admin/board/hide", { post: +b.dataset.hide, hidden: b.dataset.on === "1" }, true)) showPosts();
+  });
+  const codesCsv = codes => new Blob([["first name,last name,email,code", ...codes.map(r => r.map(v => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v).join(","))].join("\r\n")], { type: "text/csv" });
+  $("#baddroster").addEventListener("click", async () => {
+    const res = await call("/admin/board/roster", { lines: $("#broster").value }); if (!res) return;
+    const d = await res.json();
+    if (d.codes.length) download(codesCsv(d.codes), `IMS3310 discussion codes ${stamp()}.csv`);
+    say(`<p>Added ${d.added} student${d.added === 1 ? "" : "s"}${d.added ? " and downloaded their codes" : ""}.${d.skipped.length ? ` Already on the roster, so skipped: ${esc(d.skipped.join(", "))}.` : ""}</p>`);
+    $("#broster").value = "";
+    loadSettings(true);
+  });
+  $("#bre").addEventListener("click", async () => {
+    const email = $("#breissue").value.trim(); if (!email) return $("#breissue").focus();
+    const res = await call("/admin/board/roster", { reissue: email }); if (!res) return;
+    const d = await res.json();
+    download(codesCsv(d.codes), `IMS3310 discussion code ${stamp()}.csv`);
+    say(`<p>New code made for ${esc(d.reissued)} and downloaded. Their old code and sign-ins no longer work.</p>`);
+  });
+}
 
 setMode("answer");
 routeHash();
