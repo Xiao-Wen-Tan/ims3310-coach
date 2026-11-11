@@ -12,8 +12,9 @@ ALLOWED_ORIGINS = "https://wen-tan.com,https://www.wen-tan.com,https://xiao-wen-
 # of claude-opus-5 per question (Haiku ignores EFFORT). See README.md for a cost example.
 MODEL = "claude-opus-5"
 EFFORT = "low"
-# Where office-hours bookings are emailed. Must match destination_address in [[send_email]] below.
-OFFICE_HOURS_TO = "Xiaowen.Tan@utdallas.edu"
+# Where office-hours bookings are emailed. Must match destination_address in [[send_email]] below,
+# written in lower case, because Cloudflare stores the verified address in lower case.
+OFFICE_HOURS_TO = "xiaowen.tan@utdallas.edu"
 
 # "News this week" stories: Sundays and Wednesdays at 13:00 UTC (7-8 AM Central), each covering the
 # past 7 days. Cloudflare counts weekdays from 1 = Sunday, so day names are used to avoid mistakes.
@@ -39,4 +40,4 @@ database_id = "1040c70c-1193-4468-8f60-ad4b0995f999"
 # destination address. The sender is office-hours@wen-tan.com (public_config.json).
 [[send_email]]
 name = "EMAIL"
-destination_address = "Xiaowen.Tan@utdallas.edu"
+destination_address = "xiaowen.tan@utdallas.edu"

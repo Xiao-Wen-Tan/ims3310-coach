@@ -4,7 +4,7 @@ A free web page for students in IMS 3310-501 International Business (UT Dallas, 
 
 Open it here: https://wen-tan.com/ims3310-coach/
 
-It shows the class schedule, exam dates and deadlines, grading and course policies, and the project requirements and rubrics, all from the course syllabus (revised 9 Oct 2024). The Ask tab has three modes:
+It shows the class schedule, exam dates and deadlines, grading and course policies, and the project requirements and rubrics, all from the course syllabus (revised 9 Oct 2024). Click any class or deadline to open what goes with it: the text of that class's slides, the exam-review slides, an exam's format and rules, or a project's requirements, with buttons for the practice quiz, the report tutor and the rubrics. The Ask tab has three modes:
 
 - **Answer**: answers questions about the course and its concepts using the syllabus and the lecture slides.
 - **Report tutor**: coaching for the mid-term and final group project reports. It either walks your group through a six-step tutorial, one step at a time with a goal, a to-do list and a coach for each step (progress is saved in your browser), or gives feedback on a draft, pasted as text (up to about 4,000 words, a whole report) or uploaded as a PDF (up to 5 MB), following the final report rubric or, for the mid-term, the syllabus description. It never writes report text and never predicts a grade. Drafts and files are not saved.

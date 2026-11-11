@@ -62,6 +62,7 @@ The Office hours tab lets a student book a 10-minute time in the posted office h
 
 1. Open **wen-tan.com > Email > Email Routing** and turn it on. Cloudflare adds the mail (MX) records it needs to wen-tan.com.
 2. Under **Destination addresses**, add `Xiaowen.Tan@utdallas.edu` and click the link in the verification email Cloudflare sends.
+   Cloudflare saves the address in lower case (`xiaowen.tan@utdallas.edu`), so `OFFICE_HOURS_TO` and `destination_address` in `wrangler.toml` must be written in lower case too. With capitals, every booking fails with the error `E_RECIPIENT_NOT_ALLOWED`, which shows in `npx wrangler tail`.
 3. Create the bookings table and deploy:
    ```
    npx wrangler d1 execute ims3310-log --remote --file schema.sql
