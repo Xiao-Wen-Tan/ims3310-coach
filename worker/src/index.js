@@ -381,6 +381,14 @@ async function handleAdmin(env, cors, path, body) {
 
   if (path === "/admin/news") return json(200, await generateNews(env), cors.headers);
 
+  // The list shown on the page: the chosen period, newest first.
+  if (path === "/admin/questions" && body.format === "list") {
+    const days = Math.min(Math.max(parseInt(body.days, 10) || 7, 1), 120);
+    const since = new Date(Date.now() - days * 86400000).toISOString();
+    const { results } = await env.DB.prepare("SELECT ts, mode, chapter, question FROM questions WHERE ts >= ? ORDER BY ts DESC LIMIT 1000").bind(since).all();
+    return json(200, { days, questions: results }, cors.headers);
+  }
+
   if (path === "/admin/questions") {
     const { results } = await env.DB.prepare("SELECT ts, mode, chapter, question FROM questions ORDER BY ts DESC LIMIT 5000").all();
     const csv = ["time_utc,mode,chapter,question", ...results.map(r => [r.ts, r.mode, r.chapter, r.question].map(csvCell).join(","))].join("\r\n");
@@ -707,6 +715,9 @@ const BOARD_WEEKS = (() => {
   return out;
 })();
 const boardWeek = n => BOARD_WEEKS.find(w => w.week === n);
+// The example points rule in Professor Tan's instructions, offered as a starting point in the
+// instructor view. It is used only after the instructor saves it.
+const SUGGESTED_RULE = (((DATA.discussion_prompt || "").match(/\[POINTS RULE[^\]]*?for example\s+"([^"]+)"\]/) || [])[1] || "").replace(/\s+/g, " ");
 
 const nowIso = () => new Date().toISOString();
 const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
@@ -792,32 +803,59 @@ async function botCall(env, system, text, { schema = null, maxTokens = 1200 } = 
   return schema ? JSON.parse(out) : out;
 }
 
-// ----- The four jobs -----
+// ----- The four jobs, plus the draft the instructor reviews before a thread opens -----
 
+// The news story for a week: the most recent story (from the last 8 weekly runs) whose chapter is
+// taught that week, or else the latest story of all. Null when there is no news yet.
+async function pickNews(env, w) {
+  const { results } = await env.DB.prepare("SELECT stories FROM news ORDER BY id DESC LIMIT 8").all().catch(() => ({ results: [] }));
+  const all = results.flatMap(r => JSON.parse(r.stories));
+  const s = all.find(x => w.chs.includes(x.chapter)) || all[0];
+  return s ? { headline: s.headline, date: s.date, summary: s.summary, chapter: s.chapter, source: (s.sources[0] || {}).url || "" } : null;
+}
+
+const DRAFT_SCHEMA = {
+  type: "object", additionalProperties: false, required: ["goal", "opening"],
+  properties: { goal: { type: "string" }, opening: { type: "string" } },
+};
+
+// The bot drafts the week's discussion goal and opening post from the slides and the news story.
+// The draft is saved for the instructor to read, edit and publish; nothing is posted yet.
+async function draftWeek(env, week) {
+  const w = boardWeek(week);
+  if (!w) return { ok: false, reason: `Week ${week} has no chapter, so there is nothing to draft.` };
+  const news = await pickNews(env, w);
+  const t = { week, chapter: w.chapter, news: news && JSON.stringify(news), goal: null };
+  let out;
+  try {
+    out = await botCall(env, boardSystem(t, await setting(env, "points_rule")), `JOB: DRAFT
+Professor Tan will review this before anything is posted. Using only this week's slide excerpts and the news story above, write:
+- goal: the discussion goal, one sentence in the form "Students should be able to explain ...", naming one or two concepts from the slide excerpts.
+- opening: the opening post, following the OPEN job exactly, built around that goal. Plain text, no headings.
+Answer as JSON.`, { schema: DRAFT_SCHEMA, maxTokens: 1500 });
+  } catch (err) {
+    logError(err);
+    return { ok: false, reason: "The bot could not write the draft. Try again in a minute." };
+  }
+  const goal = String(out.goal || "").trim().slice(0, 400), opening = String(out.opening || "").trim().slice(0, 4000);
+  if (!goal || !opening) return { ok: false, reason: "The draft came back empty. Try again." };
+  await env.DB.prepare("INSERT OR REPLACE INTO drafts (week, goal, opening, news, updated_at, edited) VALUES (?, ?, ?, ?, ?, 0)")
+    .bind(week, goal, opening, t.news, nowIso()).run();
+  return { ok: true, week, draft: draftOut({ week, goal, opening, news: t.news, updated_at: nowIso(), edited: 0 }) };
+}
+const draftOut = d => !d ? null : { goal: d.goal, opening: d.opening, news: d.news ? JSON.parse(d.news) : null, updated_at: d.updated_at, edited: !!d.edited };
+
+// OPEN: publish the week's reviewed draft as the opening post. No new Claude call, so students see
+// exactly the text the instructor read.
 async function openThread(env, week) {
   const w = boardWeek(week);
   if (!w) return { ok: false, reason: `Week ${week} has no chapter, so no thread opens.` };
-  const g = await env.DB.prepare("SELECT goal FROM week_goals WHERE week = ?").bind(week).first();
-  const row = await env.DB.prepare("SELECT stories FROM news ORDER BY id DESC LIMIT 1").first().catch(() => null);
-  let news = null;
-  if (row) {
-    const stories = JSON.parse(row.stories);
-    const s = stories.find(x => w.chs.includes(x.chapter)) || stories[0];
-    if (s) news = { headline: s.headline, date: s.date, summary: s.summary, chapter: s.chapter, source: (s.sources[0] || {}).url || "" };
-  }
-  const t = { week, chapter: w.chapter, news: news && JSON.stringify(news), goal: g ? g.goal : null };
-  let text;
-  try {
-    text = await botCall(env, boardSystem(t, await setting(env, "points_rule")),
-      "JOB: OPEN\nWrite the opening post for this week's thread. Plain text, no headings.", { maxTokens: 1000 });
-  } catch (err) {
-    logError(err);
-    return { ok: false, reason: "The bot could not write the opening post. Try again in a minute." };
-  }
+  const d = await env.DB.prepare("SELECT * FROM drafts WHERE week = ?").bind(week).first();
+  if (!d) return { ok: false, reason: `Week ${week} has no draft yet. Press Draft first, read it, then publish.` };
   const r = await env.DB.prepare("INSERT INTO threads (week, chapter, news, goal, opened_at) VALUES (?, ?, ?, ?, ?)")
-    .bind(week, t.chapter, t.news, t.goal, nowIso()).run();
-  await addPost(env, r.meta.last_row_id, { kind: "open", body: text });
-  return { ok: true, thread: r.meta.last_row_id, week, chapter: t.chapter };
+    .bind(week, w.chapter, d.news, d.goal, nowIso()).run();
+  await addPost(env, r.meta.last_row_id, { kind: "open", body: d.opening });
+  return { ok: true, thread: r.meta.last_row_id, week, chapter: w.chapter };
 }
 
 const REPLY_SCHEMA = {
@@ -967,11 +1005,27 @@ async function boardTick(env) {
     if (!w) return `no schedule week with a chapter starts on ${c.date}`;
     const t = await currentThread(env);
     if (t && t.week === w.week && Date.now() - Date.parse(t.opened_at) < 2 * 86400000) return "this week's thread is already open";
+    // Only a draft the instructor has had the chance to read is published. With no draft yet, the
+    // bot writes one and the thread waits for the instructor's Publish button.
+    if (!(await env.DB.prepare("SELECT 1 FROM drafts WHERE week = ?").bind(w.week).first())) {
+      const d = await draftWeek(env, w.week);
+      return d.ok ? `week ${w.week} drafted; waiting for review before it opens` : d.reason;
+    }
     const r = await openThread(env, w.week);
     return r.ok ? `opened week ${w.week}` : r.reason;
   }
+  // Friday evening: draft next week's thread, so it can be reviewed over the weekend.
+  let drafted = "";
+  if (c.day === "Fri" && c.hour === 18) {
+    const monday = isoDay(new Date(Date.parse(c.date + "T00:00:00Z") + 3 * 86400000));
+    const next = BOARD_WEEKS.find(x => x.monday === monday);
+    if (next && !(await env.DB.prepare("SELECT 1 FROM drafts WHERE week = ?").bind(next.week).first())) {
+      const d = await draftWeek(env, next.week);
+      drafted = d.ok ? `; week ${next.week} drafted for review` : `; ${d.reason}`;
+    }
+  }
   const t = await currentThread(env);
-  if (!t || Date.now() - Date.parse(t.opened_at) > 7 * 86400000) return "no thread opened in the last 7 days";
+  if (!t || Date.now() - Date.parse(t.opened_at) > 7 * 86400000) return "no thread opened in the last 7 days" + drafted;
   if (c.day === "Wed" && c.hour === 18) {
     const since = new Date(Date.now() - 12 * 3600000).toISOString();
     if (await env.DB.prepare("SELECT 1 FROM posts WHERE thread_id = ? AND kind = 'nudge' AND created_at > ?").bind(t.id, since).first()) return "already nudged today";
@@ -979,9 +1033,9 @@ async function boardTick(env) {
     return r.ok ? "nudged" : r.reason;
   }
   if (c.day === "Fri" && c.hour === 18) {
-    if (await env.DB.prepare("SELECT 1 FROM summaries WHERE thread_id = ?").bind(t.id).first()) return "summary already written";
+    if (await env.DB.prepare("SELECT 1 FROM summaries WHERE thread_id = ?").bind(t.id).first()) return "summary already written" + drafted;
     const r = await summarize(env, t);
-    return r.ok ? "summary written" : r.reason;
+    return (r.ok ? "summary written" : r.reason) + drafted;
   }
   return "nothing to do at this hour";
 }
@@ -1108,19 +1162,32 @@ async function handleBoardAdmin(env, cors, path, body) {
 
   if (path === "/admin/board/settings") {
     if (body.save) {
-      const week = +body.week, goal = String(body.goal ?? "").trim().slice(0, 400), rule = String(body.points_rule ?? "").trim().slice(0, 800);
-      if (!boardWeek(week)) return reply(400, "Pick a week that has a chapter.", cors.headers);
-      if (goal) await env.DB.prepare("INSERT OR REPLACE INTO week_goals (week, goal) VALUES (?, ?)").bind(week, goal).run();
-      else await env.DB.prepare("DELETE FROM week_goals WHERE week = ?").bind(week).run();
-      await env.DB.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('points_rule', ?)").bind(rule).run();
+      // The instructor's edits to a week's draft, and the points rule.
+      const week = +body.week, w = boardWeek(week);
+      if (!w) return reply(400, "Pick a week that has a chapter.", cors.headers);
+      if (body.goal != null || body.opening != null) {
+        const goal = String(body.goal ?? "").trim().slice(0, 400), opening = String(body.opening ?? "").trim().slice(0, 4000);
+        if (!goal || !opening) return reply(400, "The goal and the opening post can't be empty. Press Draft to get new ones.", cors.headers);
+        const d = await env.DB.prepare("SELECT news FROM drafts WHERE week = ?").bind(week).first();
+        const news = d ? d.news : (n => n && JSON.stringify(n))(await pickNews(env, w));
+        await env.DB.prepare("INSERT OR REPLACE INTO drafts (week, goal, opening, news, updated_at, edited) VALUES (?, ?, ?, ?, ?, 1)")
+          .bind(week, goal, opening, news, nowIso()).run();
+      }
+      if (body.points_rule != null) await env.DB.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('points_rule', ?)")
+        .bind(String(body.points_rule).trim().slice(0, 800)).run();
     }
-    const { results } = await env.DB.prepare("SELECT week, goal FROM week_goals").all();
-    const goals = new Map(results.map(r => [r.week, r.goal]));
+    const { results } = await env.DB.prepare("SELECT * FROM drafts").all();
+    const drafts = new Map(results.map(r => [r.week, r]));
     const students = (await env.DB.prepare("SELECT COUNT(*) AS n FROM students").first()).n;
     return json(200, {
-      weeks: BOARD_WEEKS.map(w => ({ week: w.week, chapter: w.chapter, dates: w.dates, goal: goals.get(w.week) || "" })),
-      points_rule: await setting(env, "points_rule"), students, thread,
+      weeks: BOARD_WEEKS.map(w => ({ week: w.week, chapter: w.chapter, dates: w.dates, draft: draftOut(drafts.get(w.week)) })),
+      points_rule: await setting(env, "points_rule"), suggested_rule: SUGGESTED_RULE, students, thread,
     }, cors.headers);
+  }
+
+  if (path === "/admin/board/draft") {
+    const r = await draftWeek(env, +body.week);
+    return r.ok ? json(200, r, cors.headers) : reply(400, r.reason, cors.headers);
   }
 
   if (path === "/admin/board/open") {
@@ -1181,7 +1248,7 @@ async function gradebook(env) {
 
 // ---------- Entry point ----------
 
-const UNLIMITED = new Set(["/board/thread", "/admin/board/settings", "/admin/board/posts", "/admin/board/private", "/admin/board/hide", "/admin/board/csv"]);
+const UNLIMITED = new Set(["/board/thread", "/admin/questions","/admin/board/settings", "/admin/board/posts", "/admin/board/private", "/admin/board/hide", "/admin/board/csv"]);
 
 export default {
   async scheduled(controller, env, ctx) {

@@ -10,6 +10,7 @@ It handles two kinds of student request and two instructor requests, plus the we
 | Report tutor, step-by-step tutorial | Coaches a group through a pre-written six-step tutorial for its mid-term or final report, one step at a time (up to 4 rounds per step). The steps are in `tutorials` in `Course coach/course_facts.json` |
 | Report tutor, feedback | Feedback on a pasted draft (up to 24,000 characters, about 4,000 words, enough for a whole report) or an uploaded PDF (up to 5 MB), by final report rubric criterion or by the mid-term topic list, then follow-up questions |
 | Instructor summary | Claude groups the last 7, 30 or 120 days of student questions into themes |
+| Instructor question list | Shown on the instructor page as soon as the password is entered: the questions from the chosen period, newest first, with the time and the type of request |
 | Instructor CSV | All saved questions as a spreadsheet file |
 
 ## One-time setup
@@ -76,11 +77,12 @@ npx wrangler d1 execute ims3310-log --remote --command "DELETE FROM bookings WHE
 
 ## Discussion board
 
-The Discussion tab runs one guided discussion a week. A bot labelled "Course discussion bot" follows the instructions in `AI in teaching talk/prompts/discussion bot instructions v1.md` (the build copies the text below its `---` line into `course_data.json`). It has four jobs:
+The Discussion tab runs one guided discussion a week. A bot labelled "Course discussion bot" follows the instructions in `AI in teaching talk/prompts/discussion bot instructions v1.md` (the build copies the text below its `---` line into `course_data.json`). It has five jobs:
 
 | Job | When | What it does |
 |---|---|---|
-| Open | Monday 8 AM Central, or the instructor's Open button | Writes the opening post from that week's chapter, the first slides of that chapter, the latest "News this week" story (or the chapter alone if there is none) and the week's discussion goal |
+| Draft | The Draft button, or automatically on Friday 6 PM for the next week | Writes the discussion goal and the opening post from the first slides of that week's chapters and the most recent "News this week" story on one of those chapters (else the latest story, or the chapter alone if there is no news). Nothing is posted; the instructor reads and edits the draft |
+| Open | The Publish thread button, or Monday 8 AM Central | Posts the reviewed draft exactly as saved. With no draft yet, the Monday job writes one and waits for the instructor instead of opening |
 | Reply | Right after each student's new post | One short reply with one follow-up question. Never to a reply or to the bot's own posts. A post the bot judges disrespectful, off-topic or personal is flagged and hidden until the instructor restores it |
 | Nudge | Wednesday 6 PM Central, or the Nudge now button | A fresh angle, if the thread has had no post for 48 hours |
 | Summary | Friday 6 PM Central, or the Write summary now button | The class part is posted to the thread. The part for Professor Tan only (posts, replies, a note and suggested points per student) is shown only in the instructor view |
@@ -91,9 +93,9 @@ Weeks follow the Fall 2024 schedule. The Monday job opens a thread only on the M
 
 1. Create the new tables: `npx wrangler d1 execute ims3310-log --remote --file schema.sql` (all tables use `IF NOT EXISTS`, so existing data is kept).
 2. Deploy: `npx wrangler deploy`. This also adds the second cron schedule in `wrangler.toml`.
-3. Open https://wen-tan.com/ims3310-coach/#instructor, enter the password, press Load in the Discussion board box, open "Roster and sign-in codes" and paste the roster, one student per line as `First name, Last name, email` (a paste from a spreadsheet with three columns works too). A file with each student's code downloads. The codes are stored only as SHA-256 codes, so they cannot be shown again; "New code" makes a fresh one for a student who lost theirs.
+3. Open https://wen-tan.com/ims3310-coach/#instructor, enter the password (the Discussion board box loads by itself), open "Roster and sign-in codes" and paste the roster, one student per line as `First name, Last name, email` (a paste from a spreadsheet with three columns works too). A file with each student's code downloads. The codes are stored only as SHA-256 codes, so they cannot be shown again; "New code" makes a fresh one for a student who lost theirs.
 4. Send each student their code, for example through eLearning. Students sign in on the Discussion tab with their @utdallas.edu email and code.
-5. Before each week, pick the week, write the discussion goal and the points rule, and press Save. The points rule is used only in the private summary; if it is empty, the summary gives counts and notes but no suggested points.
+5. For each week, pick it, press Draft from slides and news, read the goal and the opening post, edit anything, and press Publish thread. The points rule box starts with the example from the bot instructions and takes effect when you save or publish. It is used only in the private summary; if it is empty, the summary gives counts and notes but no suggested points.
 
 **Gradebook CSV.** One row per roster student per thread, with columns week, student name, email, posts, replies, suggested points and an empty final points column for the instructor. Counts leave out hidden posts.
 
@@ -115,7 +117,7 @@ Worked example: 40 students who each ask 25 questions in a term make 1,000 answe
 
 | Job | Requests a week | Tokens in / out per request | `claude-opus-5` | `claude-sonnet-5` |
 |---|---|---|---|---|
-| Open | 1 | about 3,000 / 300 | about 2 cents | under 1 cent |
+| Draft (publishing a draft costs nothing) | 1 | about 3,000 / 400 | about 2 cents | under 1 cent |
 | Reply | 40 (one per original post; replies get none) | about 4,500 / 150 | about $1.05 | about 40 cents |
 | Nudge | 0 or 1 | about 8,000 / 150 | about 4 cents | about 2 cents |
 | Summary | 1 | about 19,000 / 2,000 | about 15 cents | about 6 cents |

@@ -77,10 +77,16 @@ CREATE TABLE IF NOT EXISTS posts (
 CREATE INDEX IF NOT EXISTS posts_thread ON posts (thread_id, id);
 CREATE INDEX IF NOT EXISTS posts_student ON posts (student_id, created_at);
 
--- The discussion goal for each schedule week, set by the instructor before the thread opens.
-CREATE TABLE IF NOT EXISTS week_goals (
+-- The bot's draft for each schedule week, written from the slides and the news story: the
+-- discussion goal and the opening post. The instructor reads and edits it, then publishes it as
+-- the thread's opening post. edited is 1 once the instructor has saved changes.
+CREATE TABLE IF NOT EXISTS drafts (
   week INTEGER PRIMARY KEY,
-  goal TEXT NOT NULL
+  goal TEXT NOT NULL,
+  opening TEXT NOT NULL,
+  news TEXT,                       -- the news story used, as JSON, or empty
+  updated_at TEXT NOT NULL,
+  edited INTEGER NOT NULL DEFAULT 0
 );
 
 -- Board settings (key points_rule holds the points rule).

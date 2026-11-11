@@ -510,27 +510,34 @@ footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--rule);
         <div class="row">
           <label for="admintoken" class="hint">Instructor password</label>
           <input type="password" id="admintoken" autocomplete="current-password" style="flex:1;min-width:160px">
+          <button class="btn small" id="adminin" type="button">Show</button>
         </div>
         <div class="row" style="margin-top:10px">
           <label for="admindays" class="hint">Period</label>
           <select id="admindays"><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="120">Whole term</option></select>
           <span class="grow"></span>
           <button class="btn ghost" id="newsbtn" type="button">Refresh news now</button>
-          <button class="btn ghost" id="csvbtn" type="button">Download all (CSV)</button>
+          <button class="btn ghost" id="csvbtn" type="button">Download (CSV)</button>
           <button class="btn" id="sumbtn" type="button">Summarize</button>
         </div>
       </div>
+      <div id="qlist" aria-live="polite"></div>
       <div class="quizpick" id="boardadmin">
-        <div class="row"><p class="minihead grow" style="margin:0">Discussion board</p><button class="btn ghost small" id="bload" type="button">Load</button></div>
-        <p class="fine" id="bstatus" style="margin-top:6px">Enter the password above and press Load.</p>
+        <p class="minihead" style="margin:0">Discussion board</p>
+        <p class="fine" id="bstatus" style="margin-top:6px">Enter the password above to load the board.</p>
         <div class="row" style="margin-top:10px">
           <label for="bweek" class="hint">Week</label>
           <select id="bweek" style="flex:1 1 220px;width:0"></select>
-          <button class="btn small" id="bopen" type="button">Open thread for this week</button>
+          <button class="btn ghost small" id="bdraft" type="button">Draft from slides and news</button>
         </div>
-        <label class="field" style="margin-top:10px"><span>Discussion goal for this week (one sentence, set before the thread opens)</span><input type="text" id="bgoal" maxlength="400"></label>
-        <label class="field"><span>Points rule, used only in the private summary (leave empty for no suggested points)</span><textarea id="brule" rows="2" maxlength="800"></textarea></label>
-        <div class="row"><span class="grow"></span><button class="btn ghost small" id="bsave" type="button">Save goal and rule</button></div>
+        <p class="fine" id="bdraftnote" style="margin-top:8px"></p>
+        <div id="bdraftbox" hidden>
+          <label class="field" style="margin-top:10px"><span>Discussion goal (one sentence)</span><textarea id="bgoal" rows="2" maxlength="400"></textarea></label>
+          <label class="field"><span>Opening post (students see exactly this text)</span><textarea id="bopening" rows="9" maxlength="4000"></textarea></label>
+        </div>
+        <label class="field"><span>Points rule, used only in the private summary</span><textarea id="brule" rows="2" maxlength="800"></textarea></label>
+        <p class="fine" id="brulenote" style="margin:-6px 0 10px"></p>
+        <div class="row"><span class="grow"></span><button class="btn ghost small" id="bsave" type="button">Save edits</button><button class="btn small" id="bopen" type="button">Publish thread</button></div>
         <div class="row" style="margin-top:10px">
           <button class="btn ghost small" id="bposts" type="button">Posts and flags</button>
           <button class="btn ghost small" id="bnudge" type="button">Nudge now</button>
@@ -1614,6 +1621,27 @@ $("#csvbtn").addEventListener("click", async () => {
   $("#adminout").innerHTML = `<div class="ans"><p>Downloaded.</p></div>`;
 });
 
+/* Student questions, listed on the page once the password is entered. */
+const MODE_NAME = m => m === "answer" ? "Answer"
+  : (x => x ? `Report tutor, ${x[1] === "midterm" ? "mid-term" : "final"}, ${x[2] === "feedback" ? "feedback" : x[3] ? "step " + x[3] : x[2]}` : m)(String(m).match(/^report-(midterm|final)-(\w+?)(?:-(\d+))?$/));
+async function showQuestions() {
+  const box = $("#qlist"), token = $("#admintoken").value.trim();
+  if (!AI_ON || !token) return;
+  box.innerHTML = `<div class="ans"><p class="empty">Loading questions...</p></div>`;
+  const res = await post("/admin/questions", { token, format: "list", days: +$("#admindays").value }).catch(() => null);
+  if (!res) { box.innerHTML = `<div class="ans"><p>Couldn't reach the helper server.</p></div>`; return; }
+  if (!res.ok) { box.innerHTML = `<div class="ans"><p>${esc(await res.text())}</p></div>`; return; }
+  const d = await res.json(), q = d.questions;
+  box.innerHTML = `<div class="ans">${meta("Student questions", `${q.length} in the last ${d.days} days, newest first`)}${q.length
+    ? `<div class="tablewrap" style="max-height:480px;overflow-y:auto"><table><thead><tr><th>When</th><th>Type</th><th>Question</th></tr></thead><tbody>
+      ${q.map(x => `<tr><td style="white-space:nowrap">${esc(shortTime(x.ts))}</td><td>${esc(MODE_NAME(x.mode))}</td><td>${esc(x.question)}</td></tr>`).join("")}</tbody></table></div>`
+    : `<p class="empty">No questions in this period.</p>`}</div>`;
+}
+const adminEnter = () => { showQuestions(); if (window.loadBoardAdmin) window.loadBoardAdmin(); };
+$("#adminin").addEventListener("click", adminEnter);
+$("#admintoken").addEventListener("change", adminEnter); /* Enter or leaving the box */
+$("#admindays").addEventListener("change", showQuestions);
+
 /* Discussion board controls */
 {
   const out = $("#adminout");
@@ -1633,33 +1661,55 @@ $("#csvbtn").addEventListener("click", async () => {
     $("#bstatus").textContent = `${d.students} student${d.students === 1 ? "" : "s"} on the roster. ` +
       (d.thread ? `Current thread: week ${d.thread.week}, ${d.thread.chapter}, opened ${shortTime(d.thread.opened_at)}.` : "No thread opened yet.");
   };
-  function fill(d) {
-    weeks = d.weeks;
-    const pick = +$("#bweek").value || (d.thread ? d.thread.week : weeks[0].week);
-    $("#bweek").innerHTML = weeks.map(w => `<option value="${w.week}">Week ${w.week}: ${esc(w.chapter)} (${esc(w.dates)})</option>`).join("");
-    $("#bweek").value = String(pick);
-    $("#bgoal").value = (weeks.find(w => w.week === +$("#bweek").value) || {}).goal || "";
-    $("#brule").value = d.points_rule || "";
-    status(d);
+  let current = null; /* the open thread, if any */
+  const week = () => +$("#bweek").value;
+  /* Show the selected week's draft: the news story used, the goal and the opening post. */
+  function showDraft() {
+    const w = weeks.find(x => x.week === week()) || {}, d = w.draft;
+    $("#bdraftbox").hidden = !d;
+    $("#bdraft").textContent = d ? "Draft again" : "Draft from slides and news";
+    $("#bopen").disabled = $("#bsave").disabled = !d;
+    $("#bopen").textContent = current && current.week === week() ? "Publish again" : "Publish thread";
+    if (!d) { $("#bdraftnote").textContent = "No draft yet. Press Draft and the bot writes the goal and opening post from this week's slides and the latest matching news story, for you to read and edit before publishing."; return; }
+    $("#bgoal").value = d.goal; $("#bopening").value = d.opening;
+    $("#bdraftnote").innerHTML = `${d.news ? `News story used: ${d.news.source ? `<a href="${esc(d.news.source)}" target="_blank" rel="noopener">${esc(d.news.headline)}</a>` : esc(d.news.headline)} (${esc(d.news.date)}, Ch${+d.news.chapter}).` : "No news story yet, so the draft uses the chapter alone."} ${d.edited ? "Edited by you" : "Drafted by the bot"} ${esc(shortTime(d.updated_at))}.`;
   }
-  $("#bweek").addEventListener("change", () => { $("#bgoal").value = (weeks.find(w => w.week === +$("#bweek").value) || {}).goal || ""; });
+  function fill(d) {
+    weeks = d.weeks; current = d.thread;
+    const pick = week() || (d.thread ? d.thread.week : weeks[0].week);
+    $("#bweek").innerHTML = weeks.map(w => `<option value="${w.week}">Week ${w.week}: ${esc(w.chapter)} (${esc(w.dates)})${w.draft ? "" : ", no draft"}</option>`).join("");
+    $("#bweek").value = String(pick);
+    /* An unsaved points rule starts as the example in your bot instructions. */
+    $("#brule").value = d.points_rule || d.suggested_rule || "";
+    $("#brulenote").textContent = d.points_rule ? "" : "Suggested from the example in your bot instructions. It takes effect when you press Save edits or Publish thread; clear it for no suggested points.";
+    status(d); showDraft();
+  }
+  $("#bweek").addEventListener("change", showDraft);
   async function loadSettings(quiet) {
     const res = await call("/admin/board/settings", {}, quiet); if (!res) return;
     fill(await res.json());
     if (!quiet) out.innerHTML = "";
   }
-  $("#bload").addEventListener("click", () => loadSettings(false));
-  $("#bsave").addEventListener("click", async () => {
+  window.loadBoardAdmin = () => loadSettings(true);
+  const edits = () => ({ save: true, week: week(), goal: $("#bgoal").value, opening: $("#bopening").value, points_rule: $("#brule").value });
+  $("#bdraft").addEventListener("click", async () => {
     if (!weeks.length) return loadSettings(false);
-    const res = await call("/admin/board/settings", { save: true, week: +$("#bweek").value, goal: $("#bgoal").value, points_rule: $("#brule").value }); if (!res) return;
+    const b = $("#bdraft"); b.disabled = true;
+    say(`<p class="empty">The bot is reading the slides and the news. This takes about 20 seconds...</p>`);
+    const res = await call("/admin/board/draft", { week: week() }, true); b.disabled = false; if (!res) return;
+    await loadSettings(true);
+    say(`<p>Week ${week()} drafted. Read the goal and the opening post above, edit anything, then press Publish thread.</p>`);
+  });
+  $("#bsave").addEventListener("click", async () => {
+    const res = await call("/admin/board/settings", edits()); if (!res) return;
     fill(await res.json());
-    say(`<p>Saved the goal for week ${+$("#bweek").value} and the points rule.</p>`);
+    say(`<p>Saved your edits for week ${week()} and the points rule.</p>`);
   });
   $("#bopen").addEventListener("click", async () => {
-    if (!weeks.length) return loadSettings(false);
-    const res = await call("/admin/board/open", { week: +$("#bweek").value }); if (!res) return;
+    if (!(await call("/admin/board/settings", edits(), true))) return;
+    const res = await call("/admin/board/open", { week: week() }); if (!res) return;
     const d = await res.json();
-    say(`<p>Opened the thread for week ${d.week}: ${esc(d.chapter)}. Students now see it on the Discussion tab.</p>`);
+    say(`<p>Published the thread for week ${d.week}: ${esc(d.chapter)}. Students now see it on the Discussion tab.</p>`);
     loadSettings(true);
   });
   $("#bnudge").addEventListener("click", async () => { if (await call("/admin/board/nudge")) say("<p>The bot added a nudge post to the current thread.</p>"); });
