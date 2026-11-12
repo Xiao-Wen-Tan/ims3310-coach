@@ -1631,11 +1631,26 @@ async function showQuestions() {
   const res = await post("/admin/questions", { token, format: "list", days: +$("#admindays").value }).catch(() => null);
   if (!res) { box.innerHTML = `<div class="ans"><p>Couldn't reach the helper server.</p></div>`; return; }
   if (!res.ok) { box.innerHTML = `<div class="ans"><p>${esc(await res.text())}</p></div>`; return; }
-  const d = await res.json(), q = d.questions;
-  box.innerHTML = `<div class="ans">${meta("Student questions", `${q.length} in the last ${d.days} days, newest first`)}${q.length
+  qdata = await res.json();
+  renderQuestions();
+}
+/* Type filter. Tutorial steps are grouped, so "Report tutor, final, tutorial" covers steps 1-6. */
+let qdata = null, qtype = "";
+const MODE_GROUP = m => MODE_NAME(m).replace(/, step \d+$/, ", tutorial");
+function renderQuestions() {
+  const all = qdata.questions, counts = new Map();
+  for (const x of all) counts.set(MODE_GROUP(x.mode), (counts.get(MODE_GROUP(x.mode)) || 0) + 1);
+  if (qtype && !counts.has(qtype)) qtype = "";
+  const q = qtype ? all.filter(x => MODE_GROUP(x.mode) === qtype) : all;
+  const opts = [["", `All types (${all.length})`], ...[...counts].sort((a, b) => a[0].localeCompare(b[0])).map(([k, n]) => [k, `${k} (${n})`])];
+  $("#qlist").innerHTML = `<div class="ans">${meta("Student questions", `${q.length} in the last ${qdata.days} days, newest first`)}
+    ${all.length ? `<div class="row" style="margin-bottom:10px"><label for="qtype" class="hint">Type</label><select id="qtype">${opts.map(([v, l]) => `<option value="${esc(v)}"${v === qtype ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></div>` : ""}
+    ${q.length
     ? `<div class="tablewrap" style="max-height:480px;overflow-y:auto"><table><thead><tr><th>When</th><th>Type</th><th>Question</th></tr></thead><tbody>
       ${q.map(x => `<tr><td style="white-space:nowrap">${esc(shortTime(x.ts))}</td><td>${esc(MODE_NAME(x.mode))}</td><td>${esc(x.question)}</td></tr>`).join("")}</tbody></table></div>`
     : `<p class="empty">No questions in this period.</p>`}</div>`;
+  const sel = $("#qtype");
+  if (sel) sel.onchange = () => { qtype = sel.value; renderQuestions(); };
 }
 const adminEnter = () => { showQuestions(); if (window.loadBoardAdmin) window.loadBoardAdmin(); };
 $("#adminin").addEventListener("click", adminEnter);
