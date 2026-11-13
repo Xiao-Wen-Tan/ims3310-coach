@@ -1,4 +1,4 @@
--- Anonymous log of student questions to the course helper.
+-- Anonymous log of student questions to the course coach.
 -- No names, emails or network addresses are stored.
 CREATE TABLE IF NOT EXISTS questions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

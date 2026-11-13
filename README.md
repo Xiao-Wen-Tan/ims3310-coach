@@ -1,4 +1,4 @@
-# IMS 3310 Course Helper
+# IMS 3310 Course Coach
 
 A free web page for students in IMS 3310-501 International Business (UT Dallas, Professor Xiaowen Tan).
 
@@ -8,7 +8,7 @@ It shows the class schedule, exam dates and deadlines, grading and course polici
 
 - **Answer**: answers questions about the course and its concepts using the syllabus and the lecture slides.
 - **Report tutor**: coaching for the mid-term and final group project reports. It either walks your group through a six-step tutorial, one step at a time with a goal, a to-do list and a coach for each step (progress is saved in your browser), or gives feedback on a draft, pasted as text (up to about 4,000 words, a whole report) or uploaded as a PDF (up to 5 MB), following the final report rubric or, for the mid-term, the syllabus description. It never writes report text and never predicts a grade. Drafts and files are not saved.
-- **Practice quiz**: five multiple-choice questions at a time on a chapter, drawn from a fixed set of about 10 per chapter written from Professor Tan's lecture slides, with explanations and the slide numbers they come from. It works without the AI helper. Not graded.
+- **Practice quiz**: five multiple-choice questions at a time on a chapter, drawn from a fixed set of about 10 per chapter written from Professor Tan's lecture slides, with explanations and the slide numbers they come from. It works without the AI coach. Not graded.
 
 The Deadlines tab can download every exam and due date as a calendar file. Questions are saved without names or network addresses so Professor Tan can see which topics are confusing; please don't type personal information.
 

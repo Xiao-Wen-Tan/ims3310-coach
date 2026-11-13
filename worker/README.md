@@ -1,4 +1,4 @@
-# Course helper server (Cloudflare Worker)
+# Course coach server (Cloudflare Worker)
 
 This small server sits between the course page and Claude. The page sends it a student's request; the server adds the syllabus facts and the most relevant lecture-slide excerpts, asks Claude, and sends the answer back. The Anthropic API key is stored as a Cloudflare secret, so it never appears in the page or in this repository.
 

@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>IMS 3310 Course Helper</title>
+<title>IMS 3310 Course Coach</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -365,7 +365,7 @@ footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--rule);
   <header class="top">
     <div class="dateline"><span id="today"></span><span>UT Dallas · Naveen Jindal School of Management</span></div>
     <div class="brand">
-      <h1>IMS 3310 Course Helper</h1>
+      <h1>IMS 3310 Course Coach</h1>
       <span class="meta">International Business · Section 501 · Fall 2024</span>
     </div>
   </header>
@@ -505,7 +505,7 @@ footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--rule);
 
   <section class="panel" id="panel-instructor" hidden>
     <div class="askcol">
-      <div><h2>Instructor view</h2><p class="lede">What students have asked the helper (stored without names or network addresses), and the discussion board.</p></div>
+      <div><h2>Instructor view</h2><p class="lede">What students have asked the coach (stored without names or network addresses), and the discussion board.</p></div>
       <div class="quizpick">
         <div class="row">
           <label for="admintoken" class="hint">Instructor password</label>
@@ -574,7 +574,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const srcLabel = k => (SRC[k] && SRC[k].label) || k;
 
-/* Address of the course helper server (Cloudflare Worker). Empty means keyword search only. */
+/* Address of the course coach server (Cloudflare Worker). Empty means keyword search only. */
 const WORKER_URL = "https://ims3310-helper.theawen0111.workers.dev";
 const AI_ON = !!WORKER_URL && !WORKER_URL.startsWith("/*");
 
@@ -691,7 +691,7 @@ function utcStamp(day, hh, mm) {
 const icsText = s => String(s).replace(/\\/g, "\\\\").replace(/[,;]/g, m => "\\" + m).replace(/\n/g, "\\n");
 function buildIcs() {
   const now = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//IMS 3310 Course Helper//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", `X-WR-CALNAME:IMS 3310 ${F.course.term}`];
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//IMS 3310 Course Coach//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", `X-WR-CALNAME:IMS 3310 ${F.course.term}`];
   for (const d of DEADLINE_DAYS) {
     const inClass = /in class/i.test(d.time);
     const [start, end] = inClass ? [[17, 30], [18, 45]] : [[23, 29], [23, 59]];
@@ -818,7 +818,7 @@ function setMode(m) {
   quiz = null;
   $("#tutor").hidden = true;
   if (m === "report") openReport(); else setAskLabel();
-  if (m === "report" && !AI_ON) $("#answer").innerHTML = `<div class="ans"><p class="empty">The report tutor needs the AI helper, which isn't switched on yet. Meanwhile, the <a href="#assign">Assignments &amp; grading tab</a> lists both reports' requirements and the final report rubric.</p></div>`;
+  if (m === "report" && !AI_ON) $("#answer").innerHTML = `<div class="ans"><p class="empty">The report tutor needs the AI coach, which isn't switched on yet. Meanwhile, the <a href="#assign">Assignments &amp; grading tab</a> lists both reports' requirements and the final report rubric.</p></div>`;
 }
 $("#modes").addEventListener("click", e => { const b = e.target.closest("button"); if (b && b.dataset.mode !== mode) setMode(b.dataset.mode); });
 /* Changing the report or the step opens that report's tutorial progress, or a fresh feedback conversation. */
@@ -880,7 +880,7 @@ function setAskLabel() {
 }
 
 /* Uploaded PDF draft: {name, kb, data (base64)}. It is sent again with each follow-up, because the
-   helper server keeps nothing between requests. Nothing is stored in the browser. */
+   coach server keeps nothing between requests. Nothing is stored in the browser. */
 let pdf = null;
 function pdfNote(msg) {
   pdf = null; setAskLabel();
@@ -1059,7 +1059,7 @@ $("#history").addEventListener("click", e => {
 });
 renderHist();
 
-/* Keyword search over the syllabus facts, schedule and slides, used when the AI helper is unavailable. */
+/* Keyword search over the syllabus facts, schedule and slides, used when the AI coach is unavailable. */
 function fallbackAnswer(q, why) {
   const words = tok(q);
   const score = t => { const s = t.toLowerCase(); return words.reduce((n, w) => n + (s.includes(w) ? 1 : 0), 0); };
@@ -1076,7 +1076,7 @@ function fallbackAnswer(q, why) {
 
 const MSG = {
   429: "Too many questions in a short time. Wait a minute and try again.",
-  403: "This page isn't allowed to use the course helper from this address.",
+  403: "This page isn't allowed to use the course coach from this address.",
   413: "That question is too long. Keep it under 600 characters.",
 };
 const post = (path, body, signal) => fetch(WORKER_URL.replace(/\/+$/, "") + path, {
@@ -1089,7 +1089,7 @@ async function ask() {
   const q = pdfDraft ? PDF_PLACEHOLDER : $("#question").value.trim().slice(0, inputLimit());
   if (!q) { $("#question").focus(); return; }
   const tutor = mode === "report";
-  if (!AI_ON) { if (tutor) setMode("report"); else fallbackAnswer(q, "The AI helper isn't switched on yet. Showing keyword matches."); return; }
+  if (!AI_ON) { if (tutor) setMode("report"); else fallbackAnswer(q, "The AI coach isn't switched on yet. Showing keyword matches."); return; }
   if (tutor && thread.length >= MAX_TURNS) { renderThread(undefined, { status: "Start over to ask something new." }); return; }
 
   ctl = new AbortController();
@@ -1105,15 +1105,15 @@ async function ask() {
   let text = "";
   const show = (opts) => tutor ? renderThread(text, opts) : renderAnswer(text, { question: q, ...opts });
   if (tutor) { thread.push({ role: "student", text: q }); $("#question").value = ""; }
-  show({ streaming: true, tag: tutor ? "Report tutor" : "AI helper", status: "Thinking..." });
+  show({ streaming: true, tag: tutor ? "Report tutor" : "AI coach", status: "Thinking..." });
   try {
     const res = await post("/", tutor ? tutorBody(q, history) : { mode, question: q }, ctl.signal);
     if (!res.ok || !res.body) {
-      /* 400 and 413 replies from the helper server explain what to fix, so show them as they are. */
+      /* 400 and 413 replies from the coach server explain what to fix, so show them as they are. */
       const msg = res.status === 400 || res.status === 413 ? (await res.text()).slice(0, 300) || MSG[413] : MSG[res.status] || "";
       if (tutor) tutorFail(msg || "The report tutor is unavailable right now. Please try again in a minute.");
       else if (msg) renderAnswer(msg, { question: q, tag: "Not sent" });
-      else fallbackAnswer(q, "The AI helper is unavailable right now. Showing keyword matches.");
+      else fallbackAnswer(q, "The AI coach is unavailable right now. Showing keyword matches.");
       return;
     }
     const reader = res.body.getReader(), dec = new TextDecoder();
@@ -1121,7 +1121,7 @@ async function ask() {
       const { value, done } = await reader.read();
       if (done) break;
       text += dec.decode(value, { stream: true });
-      show({ streaming: true, tag: tutor ? "Report tutor" : "AI helper", status: "Writing..." });
+      show({ streaming: true, tag: tutor ? "Report tutor" : "AI coach", status: "Writing..." });
     }
     if (tutor) {
       if (text.trim()) thread.push({ role: "helper", text }); else thread.pop();
@@ -1129,7 +1129,7 @@ async function ask() {
       renderThread(undefined, { status: "AI answers can be wrong. The syllabus and Professor Tan's announcements are final." });
       setAskLabel();
     } else {
-      renderAnswer(text, { question: q, tag: "AI helper", status: "AI answers can be wrong. The syllabus and Professor Tan's announcements are final." });
+      renderAnswer(text, { question: q, tag: "AI coach", status: "AI answers can be wrong. The syllabus and Professor Tan's announcements are final." });
       if (text.trim()) { const h = loadHist().filter(x => x.q !== q); h.unshift({ q, a: text }); saveHist(h); renderHist(); }
     }
   } catch (e) {
@@ -1138,7 +1138,7 @@ async function ask() {
       else renderAnswer(text, { question: q, tag: "Stopped", status: "Stopped." });
     } else {
       if (tutor) tutorFail("Couldn't reach the report tutor. Check your connection and try again.");
-      else fallbackAnswer(q, "Couldn't reach the AI helper. Showing keyword matches.");
+      else fallbackAnswer(q, "Couldn't reach the AI coach. Showing keyword matches.");
     }
   } finally {
     busy(false); ctl = null;
@@ -1186,7 +1186,7 @@ function renderQuiz() {
   if (i >= questions.length) {
     $("#answer").innerHTML = `<div class="ans">${meta("Practice quiz", `Chapter ${chapter}`)}
       <p class="score">${score} of ${questions.length}</p>
-      <p>${score === questions.length ? "All correct. Nice work." : "Try a new set, or ask the helper to explain anything that tripped you up."}</p>
+      <p>${score === questions.length ? "All correct. Nice work." : "Try a new set, or ask the coach to explain anything that tripped you up."}</p>
       <div class="row"><button class="btn" type="button" id="again">New set on Ch ${chapter}</button><button class="btn ghost" type="button" id="askch">Ask about this chapter</button></div></div>`;
     $("#again").onclick = startQuiz;
     $("#askch").onclick = () => { setMode("answer"); $("#question").value = `Explain the main ideas of Chapter ${chapter}${CH_TITLE[chapter] ? " (" + CH_TITLE[chapter] + ")" : ""}.`; updateCount(); $("#question").focus(); };
@@ -1378,7 +1378,7 @@ $("#dbody").addEventListener("click", e => {
   else if (k.proj) openDetail(projectDetail(k.proj));
 });
 
-/* ---------- News this week (written weekly by the helper server, see worker/src/index.js) ---------- */
+/* ---------- News this week (written weekly by the coach server, see worker/src/index.js) ---------- */
 let newsState = null; /* null: not asked yet; "loading"; "done" */
 const fmtDay = iso => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }); };
 const safeUrl = u => /^https?:\/\//i.test(u) ? u : "#";
@@ -1386,12 +1386,12 @@ async function loadNews() {
   if (newsState) return;
   const box = $("#news");
   const notReady = why => { box.innerHTML = `<div class="newsgrid solo"><p class="empty">This week's stories are not ready yet. ${why}</p></div>`; newsState = null; };
-  if (!AI_ON) return notReady("The helper server is not connected to this page.");
+  if (!AI_ON) return notReady("The coach server is not connected to this page.");
   newsState = "loading";
   box.innerHTML = `<div class="newsgrid solo"><p class="empty">Loading this week's stories...</p></div>`;
   let d = null;
   try { const res = await fetch(WORKER_URL.replace(/\/+$/, "") + "/news"); if (res.ok) d = await res.json(); } catch (e) {}
-  if (!d || !Array.isArray(d.stories) || !d.stories.length) return notReady(d ? "New stories are added every Sunday and Wednesday." : "Couldn't reach the helper server.");
+  if (!d || !Array.isArray(d.stories) || !d.stories.length) return notReady(d ? "New stories are added every Sunday and Wednesday." : "Couldn't reach the coach server.");
   newsState = "done";
   const story = (s, i) => `<article class="story${i === 0 ? " lead" : ""}">
       <p class="when">${esc(fmtDay(s.date))}</p>
@@ -1414,7 +1414,7 @@ async function loadNews() {
   };
 }
 
-/* ---------- Office hours booking (open times come from the helper server, see worker/src/index.js) ---------- */
+/* ---------- Office hours booking (open times come from the coach server, see worker/src/index.js) ---------- */
 {
   const OH = DATA.office_hours;
   const DAYNAME = { Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday" };
@@ -1465,7 +1465,7 @@ async function loadNews() {
       $("#ohtopic").value = ""; $("#ohpref").value = "";
       if (d.kind === "slot") loadSlots();
     } catch (err) {
-      say("Couldn't reach the helper server. Please email Xiaowen.Tan@utdallas.edu.", true);
+      say("Couldn't reach the coach server. Please email Xiaowen.Tan@utdallas.edu.", true);
     } finally { $("#ohbtn").disabled = false; }
   });
   /* showTab() calls this when the tab opens, so open times load only when needed. */
@@ -1507,7 +1507,7 @@ const shortTime = iso => new Date(iso).toLocaleString("en-US", { month: "short",
         if (!res.ok) { $("#bmsg").textContent = await res.text(); return; }
         keep((await res.json()).session);
         load();
-      } catch (err) { $("#bmsg").textContent = "Couldn't reach the course helper. Please try again."; }
+      } catch (err) { $("#bmsg").textContent = "Couldn't reach the course coach. Please try again."; }
       finally { btn.disabled = false; }
     });
   }
@@ -1569,7 +1569,7 @@ const shortTime = iso => new Date(iso).toLocaleString("en-US", { month: "short",
       await load();
       /* The bot replies to a new post within a few seconds. */
       if (parent == null) { later.forEach(clearTimeout); later = [setTimeout(load, 6000), setTimeout(load, 15000)]; }
-    } catch (err) { msg.textContent = "Couldn't reach the course helper. Please try again."; }
+    } catch (err) { msg.textContent = "Couldn't reach the course coach. Please try again."; }
     finally { s.disabled = false; }
   });
 
@@ -1590,12 +1590,12 @@ const shortTime = iso => new Date(iso).toLocaleString("en-US", { month: "short",
 /* ---------- Instructor view (#instructor) ---------- */
 async function adminCall(path) {
   const out = $("#adminout");
-  if (!AI_ON) { out.innerHTML = `<div class="ans"><p>The helper server isn't connected to this page yet, so there is nothing to show.</p></div>`; return null; }
+  if (!AI_ON) { out.innerHTML = `<div class="ans"><p>The coach server isn't connected to this page yet, so there is nothing to show.</p></div>`; return null; }
   const token = $("#admintoken").value.trim();
   if (!token) { $("#admintoken").focus(); return null; }
   out.innerHTML = `<div class="ans"><p class="empty">Working...</p></div>`;
   const res = await post(path, { token, days: +$("#admindays").value }).catch(() => null);
-  if (!res) { out.innerHTML = `<div class="ans"><p>Couldn't reach the helper server.</p></div>`; return null; }
+  if (!res) { out.innerHTML = `<div class="ans"><p>Couldn't reach the coach server.</p></div>`; return null; }
   if (!res.ok) { out.innerHTML = `<div class="ans"><p>${esc(await res.text())}</p></div>`; return null; }
   return res;
 }
@@ -1629,7 +1629,7 @@ async function showQuestions() {
   if (!AI_ON || !token) return;
   box.innerHTML = `<div class="ans"><p class="empty">Loading questions...</p></div>`;
   const res = await post("/admin/questions", { token, format: "list", days: +$("#admindays").value }).catch(() => null);
-  if (!res) { box.innerHTML = `<div class="ans"><p>Couldn't reach the helper server.</p></div>`; return; }
+  if (!res) { box.innerHTML = `<div class="ans"><p>Couldn't reach the coach server.</p></div>`; return; }
   if (!res.ok) { box.innerHTML = `<div class="ans"><p>${esc(await res.text())}</p></div>`; return; }
   qdata = await res.json();
   renderQuestions();
@@ -1663,12 +1663,12 @@ $("#admindays").addEventListener("change", showQuestions);
   let weeks = [];
   const say = (html, tag = "Discussion board") => { out.innerHTML = `<div class="ans">${meta(tag, "")}<div class="body">${html}</div></div>`; };
   async function call(path, extra = {}, quiet = false) {
-    if (!AI_ON) { say("<p>The helper server isn't connected to this page yet.</p>"); return null; }
+    if (!AI_ON) { say("<p>The coach server isn't connected to this page yet.</p>"); return null; }
     const token = $("#admintoken").value.trim();
     if (!token) { $("#admintoken").focus(); return null; }
     if (!quiet) say(`<p class="empty">Working...</p>`);
     const res = await post(path, { token, ...extra }).catch(() => null);
-    if (!res) { say("<p>Couldn't reach the helper server.</p>"); return null; }
+    if (!res) { say("<p>Couldn't reach the coach server.</p>"); return null; }
     if (!res.ok) { say(`<p>${esc(await res.text())}</p>`); return null; }
     return res;
   }

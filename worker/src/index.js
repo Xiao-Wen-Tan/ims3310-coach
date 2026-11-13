@@ -1,4 +1,4 @@
-// IMS 3310 course helper server (Cloudflare Worker).
+// IMS 3310 course coach server (Cloudflare Worker).
 // Receives a request from the course page and answers it with Claude, grounded in the
 // syllabus facts and the lecture slides. Two student modes, both streamed as plain text:
 //   answer  a direct answer
@@ -52,7 +52,7 @@ function factsText() {
 
 // The system prompt is identical on every request, so it is cached.
 // Mode-specific instructions go in the user message to keep this prefix stable.
-const SYSTEM = `You are the course helper for IMS 3310-501 International Business at UT Dallas, taught by Xiaowen Tan (Professor Tan). You answer questions from students in the course.
+const SYSTEM = `You are the course coach for IMS 3310-501 International Business at UT Dallas, taught by Xiaowen Tan (Professor Tan). You answer questions from students in the course.
 
 RULES
 - Use ONLY the COURSE FACTS below and the SLIDE EXCERPTS in the student's message. They come from the syllabus (revised 9 Oct 2024), the Fall 2024 rubrics, Professor Tan's lecture and exam-review slides, and Professor Tan's clarifications.
@@ -283,7 +283,7 @@ function streamAnswer(env, ctx, cors, messages, maxTokens = 2000) {
       }
     } catch (err) {
       logError(err);
-      await writer.write(enc.encode("\n\nThe course helper hit an error. Please try again in a minute."));
+      await writer.write(enc.encode("\n\nThe course coach hit an error. Please try again in a minute."));
     } finally {
       await writer.close();
     }
@@ -406,7 +406,7 @@ async function handleAdmin(env, cors, path, body) {
   try {
     const msg = await client.beta.messages.create(baseRequest(env, {
       max_tokens: 4000,
-      system: "You help a university instructor understand what their students are asking an AI course helper. The questions are anonymous. Write plain text for the instructor: group the questions into 3-8 themes, give each theme a count and one or two example questions quoted exactly, then list up to three concrete suggestions for what to clarify in class or in an announcement. No em-dashes. Do not guess who asked anything.",
+      system: "You help a university instructor understand what their students are asking an AI course coach. The questions are anonymous. Write plain text for the instructor: group the questions into 3-8 themes, give each theme a count and one or two example questions quoted exactly, then list up to three concrete suggestions for what to clarify in class or in an announcement. No em-dashes. Do not guess who asked anything.",
       messages: [{ role: "user", content: `IMS 3310 student questions from the last ${days} days (${results.length} total):\n${list}` }],
     }));
     const summary = msg.content.filter(b => b.type === "text").map(b => b.text).join("").trim();
@@ -645,7 +645,7 @@ async function handleBook(env, cors, body) {
   }
 
   const text = [
-    kind === "slot" ? "A student booked an office-hours time through the IMS 3310 Course Helper." : "A student asked for an office-hours appointment outside the posted hours.",
+    kind === "slot" ? "A student booked an office-hours time through the IMS 3310 Course Coach." : "A student asked for an office-hours appointment outside the posted hours.",
     "",
     kind === "slot" ? `When: ${slotLabel(slot)}, ${OH.room}` : `Times that work for them: ${preferred}`,
     `Student: ${name}`,
@@ -1268,7 +1268,7 @@ export default {
     if (path === "/office-hours" && request.method === "GET") return handleOfficeHours(env);
     if (request.method === "OPTIONS") return new Response(null, { status: cors.ok ? 204 : 403, headers: cors.headers });
     if (request.method !== "POST") return reply(405, "Use POST.", cors.headers);
-    if (!cors.ok) return reply(403, "This address is not allowed to use the course helper.", cors.headers);
+    if (!cors.ok) return reply(403, "This address is not allowed to use the course coach.", cors.headers);
 
     // Per-address limit (set in wrangler.toml). The address is used only here, never stored.
     // Reading the discussion board and the instructor's board views cost nothing and are left out,
