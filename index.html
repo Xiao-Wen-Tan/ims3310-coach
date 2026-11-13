@@ -69,14 +69,8 @@ header.top { background: var(--ground); }
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
   background: var(--ground); margin: 0 -16px; padding: 0 16px;
 }
-.dateline {
-  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 16px;
-  max-width: 1120px; margin: 0 auto; padding: 10px 0 0;
-  font: 500 .74rem var(--sans); color: var(--muted); letter-spacing: .02em;
-}
-.brand { max-width: 1120px; margin: 0 auto; text-align: center; padding: 6px 0 12px; border-bottom: 1px solid var(--rule); }
+.brand { max-width: 1120px; margin: 0 auto; text-align: center; padding: 16px 0 12px; border-bottom: 1px solid var(--rule); }
 .brand h1 { font-size: clamp(1.7rem, 4.2vw, 2.7rem); font-weight: 800; letter-spacing: -.015em; }
-.brand .meta { display: block; font: 500 .8rem var(--sans); color: var(--muted); margin-top: 4px; letter-spacing: .02em; }
 nav.tabs {
   display: flex; justify-content: center; gap: 0; max-width: 1120px; margin: 3px auto 0;
   border-top: 1px solid var(--rule); border-bottom: 1px solid var(--line);
@@ -124,7 +118,6 @@ input[type="search"] { width: 220px; }
 .modes button { font: 600 .78rem var(--sans); letter-spacing: .04em; text-transform: uppercase; color: var(--ink); background: none; border: 0; border-right: 1px solid var(--ink); padding: 8px 16px; cursor: pointer; white-space: nowrap; }
 .modes button:last-child { border-right: 0; }
 .modes button[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
-.modehint { margin: -6px 0 0; color: var(--muted); font-size: .95rem; font-style: italic; }
 .qwrap { background: var(--surface); border: 1px solid var(--line); border-top: 2px solid var(--ink); border-radius: 0; padding: 4px 10px 10px; }
 .qwrap:focus-within { border-color: var(--ink); }
 textarea#question {
@@ -290,7 +283,6 @@ ol.slides span { display: block; font: .84rem/1.5 var(--sans); color: var(--mute
 .switch button[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
 .rubric td:first-child { font-weight: 700; min-width: 150px; }
 .rubric td { font-size: .88rem; min-width: 170px; }
-.colophon { font: .8rem/1.6 var(--sans); color: var(--muted); margin: 0; }
 
 /* Office hours */
 .ohgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; border-top: 2px solid var(--ink); padding-top: 14px; }
@@ -328,7 +320,6 @@ ol.slides span { display: block; font: .84rem/1.5 var(--sans); color: var(--mute
 .courselink button { font: 700 .95rem var(--display); color: var(--link); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 2px; }
 .sources { margin: 0; padding: 0; list-style: none; font: .8rem/1.5 var(--sans); }
 .sources li { margin: 0 0 3px; }
-.newsfoot { margin-top: 22px; padding-top: 10px; border-top: 1px solid var(--line); }
 
 /* Discussion board */
 .bsignin { max-width: 440px; border-top: 2px solid var(--ink); padding-top: 14px; }
@@ -356,17 +347,14 @@ ol.slides span { display: block; font: .84rem/1.5 var(--sans); color: var(--mute
 .stack { display: grid; gap: 20px; }
 .stack > * { min-width: 0; }
 .summary { white-space: pre-wrap; }
-footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--rule); color: var(--muted); font: .76rem/1.6 var(--sans); max-width: 1120px; }
 @media (prefers-reduced-motion: no-preference) { .ans { animation: rise .2s ease-out; } }
 @keyframes rise { from { transform: translateY(3px); } to { transform: none; } }
 </style>
 
 <div class="wrap">
   <header class="top">
-    <div class="dateline"><span id="today"></span><span>UT Dallas · Naveen Jindal School of Management</span></div>
     <div class="brand">
       <h1>IMS 3310 Course Coach</h1>
-      <span class="meta">International Business · Section 501 · Fall 2024</span>
     </div>
   </header>
   <div class="navbar">
@@ -389,7 +377,6 @@ footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--rule);
         <button type="button" data-mode="report" aria-pressed="false">Report tutor</button>
         <button type="button" data-mode="quiz" aria-pressed="false">Practice quiz</button>
       </div>
-      <p class="modehint" id="modehint"></p>
 
       <div id="askform">
         <div class="row reportpick" id="reportpick" hidden>
@@ -426,9 +413,6 @@ footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--rule);
       <div id="answer" aria-live="polite"></div>
 
       <details class="hist" id="histbox" hidden><summary>Your recent questions (saved in this browser only)</summary><div class="history" id="history"></div></details>
-      <p class="fine" id="aihint">Answers come from the course syllabus and lecture slides. AI can make mistakes, so check the Schedule and Deadlines tabs for anything that matters. For extensions, make-ups or personal situations, email Professor Tan at Xiaowen.Tan@utdallas.edu.</p>
-      <p class="fine" id="lognote" hidden>Questions are saved without your name or address so Professor Tan can see which topics are confusing. Please don't type personal information.</p>
-      <p class="fine" id="draftnote" hidden>Drafts, pasted or uploaded as a PDF, are sent to the AI for feedback but never saved; only their size is logged. Remove names, student IDs and anything personal first, and leave the cover page out of an uploaded PDF. The tutor coaches and never writes report text for you.</p>
     </div>
   </section>
 
@@ -443,7 +427,6 @@ footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--rule);
     <div class="paper">
       <div class="sec-head"><div><span class="kicker">Weekly discussion</span><h2>Discussion board</h2><p class="lede">One question a week, built from that week's chapter and the news. Post your view by Wednesday and reply to at least one classmate by Friday. The course discussion bot, an AI, asks each poster one follow-up question; Professor Tan reads every thread and decides any points.</p></div></div>
       <div id="board" aria-live="polite"></div>
-      <p class="fine" style="margin-top:16px">Classmates see only your first name. Your posts, with your name and email, are kept for Professor Tan, and post text with first names only is sent to the AI so the bot can reply. Please don't share personal information.</p>
     </div>
   </section>
 
@@ -480,7 +463,6 @@ footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--rule);
         <div id="ohwhen" hidden>
           <p class="minihead">1. When could you meet?</p>
           <label class="field"><span>Days and times that work for you</span><input type="text" id="ohpref" maxlength="200" placeholder="e.g. Mon or Wed afternoon, after 2 PM"></label>
-          <p class="fine">Professor Tan will reply by email to confirm a time.</p>
         </div>
         <div>
           <p class="minihead">2. Your details</p>
@@ -489,7 +471,6 @@ footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--rule);
           <label class="field"><span>What would you like to discuss?</span><textarea id="ohtopic" maxlength="600" rows="4"></textarea></label>
           <div class="row"><span class="grow fine" id="ohchosen">No time picked yet.</span><button class="btn" type="submit" id="ohbtn">Book this time</button></div>
           <div id="ohout" aria-live="polite"></div>
-          <p class="fine" style="margin-top:12px">Your name, email and topic go only into an email to Professor Tan. This site keeps just the booked time and a scrambled code of your email, so one student can hold one upcoming time. To cancel or change a booking, email Xiaowen.Tan@utdallas.edu.</p>
         </div>
       </form>
     </div>
@@ -557,7 +538,6 @@ footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--rule);
     </div>
   </section>
 
-  <footer id="foot"></footer>
 </div>
 
 <dialog class="sheet" id="detail" aria-labelledby="dtitle">
@@ -613,7 +593,6 @@ document.addEventListener("click", e => {
   e.preventDefault();
   document.getElementById(a.getAttribute("href").slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
-$("#today").textContent = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
 /* ---------- Dates ---------- */
 /* "?today=2024-10-15" in the address pretends it is that day (for demos). */
@@ -639,11 +618,8 @@ const DEADLINE_DAYS = F.deadlines.flatMap(d => d.date.split(/,\s*/).map(x => ({ 
   const parts = [];
   if (nextClass) parts.push(`<span>Next class: <b>${DOW[nextClass.when.getDay()]} ${nextClass.r.date}</b>, ${esc(nextClass.r.topic)} <span class="soon">${inDays(daysFrom(nextClass.when))}</span></span>`);
   if (nextDue) parts.push(`<span>Next deadline: <b>${esc(nextDue.item)}</b>, ${DOW[nextDue.when.getDay()]} ${nextDue.one} ${esc(nextDue.time.replace(/, in class$/, ""))} <span class="soon">${inDays(daysFrom(nextDue.when))}</span></span>`);
-  if (!parts.length) {
-    const last = DEADLINE_DAYS[DEADLINE_DAYS.length - 1];
-    parts.push(`<span>${esc(F.course.term)} has ended. The last deadline was the ${esc(last.item.toLowerCase())} on ${DOW[last.when.getDay()]} ${last.one}.</span>`);
-  }
   $("#nextup").innerHTML = parts.join("");
+  $("#nextup").hidden = !parts.length;
 }
 
 /* ---------- Schedule ---------- */
@@ -753,7 +729,6 @@ let showRub; /* switches the rubric table; also used by the detail panel's rubri
     </section>
     <section class="part" id="part-exams"><h3>Exams</h3>${item("Exam rules", `<b>${W("Exams")}% of the grade</b>${F.deadlines.filter(d => d.kind === "exam").map(d => `${esc(d.item)}: ${esc(d.day)} ${esc(d.date)}`).join("<br>")}`, bullets("Exams"))}</section>
     <section class="part" id="part-policy"><h3>Class policies</h3>${item("Policies", "Late work, absences, academic integrity, recordings and accommodations", bullets("Policies"))}
-      <p class="colophon">Instructor: ${esc(F.instructor.name)} · ${esc(F.instructor.email)} · Office ${esc(F.instructor.office)} · Office hours ${esc(F.instructor.office_hours)}<br>Textbook: Peng, ${esc(F.textbook.title)}, ${esc(F.textbook.edition)}.</p>
     </section>`;
   showRub = k => {
     const [t, r] = RUB[k];
@@ -764,8 +739,6 @@ let showRub; /* switches the rubric table; also used by the detail panel's rubri
   $("#rubswitch").addEventListener("click", e => { const b = e.target.closest("button"); if (b) showRub(b.dataset.r); });
   showRub("report");
 }
-
-$("#foot").textContent = "Built from the IMS 3310 Fall 2024 syllabus (revised 9 Oct 2024), the Fall 2024 Word syllabus rubrics, the lecture and exam-review slides, and Professor Tan's clarifications. If anything here differs from an announcement in class or on eLearning, the announcement wins.";
 
 /* Keyword search over slide chunks (and facts, for the no-AI fallback). */
 const STOP = new Set("a an the and or of to in on for is are was be can i my me we you your it this that what when where which who how do does did with at by from as about will would should could please hi hello professor dr thanks thank there their they have has not if so any".split(" "));
@@ -798,21 +771,13 @@ function searchSlides(q, k = 6) {
 }
 
 /* ---------- Ask: modes ---------- */
-const MODE_HINT = {
-  answer: "Get a direct answer about dates, policies, assignments or course concepts.",
-  report: "Coaching for your group project report. Work through a step-by-step tutorial with the coach, or get feedback on a pasted draft or an uploaded PDF.",
-  quiz: "Five multiple-choice practice questions from Professor Tan's slides, with explanations. Not graded.",
-};
 let mode = "answer";
 function setMode(m) {
   mode = m;
   for (const b of $("#modes").children) b.setAttribute("aria-pressed", b.dataset.mode === m);
-  $("#modehint").textContent = MODE_HINT[m];
   $("#askform").hidden = m === "quiz";
   $("#quizform").hidden = m !== "quiz";
   $("#reportpick").hidden = m !== "report";
-  $("#draftnote").hidden = m !== "report";
-  $("#lognote").hidden = !AI_ON || m === "quiz";
   $("#answer").innerHTML = "";
   thread = []; tut = null; pdf = null;
   quiz = null;
@@ -1005,8 +970,7 @@ function renderTutor() {
     ${allDone ? `<p class="hint"><strong>All steps are done.</strong> When you have a draft, switch the Step menu to Feedback on a draft.</p>` : ""}
     <div class="row tnav"><button class="btn ghost small" type="button" id="tback"${tut.step ? "" : " disabled"}>Back</button><span class="grow"></span>
     <button class="linkbtn" type="button" id="treset">Restart tutorial</button>
-    <button class="btn small" type="button" id="tnext">${last ? "Mark step done" : "Next step"}</button></div>
-    <p class="fine">Your progress and conversations are saved in this browser only.</p>`;
+    <button class="btn small" type="button" id="tnext">${last ? "Mark step done" : "Next step"}</button></div>`;
 }
 function showTutStep() { renderTutor(); $("#answer").innerHTML = ""; if (thread.length) renderThread(); setAskLabel(); }
 function goStep(n) { saveTut(); tut.step = n; thread = tut.threads[n] || []; saveTut(); showTutStep(); }
@@ -1244,7 +1208,7 @@ const deckBox = (deck, open) => {
   return `<details class="deck"${open ? " open" : ""}><summary>${esc(deck)} <span>· ${s.length} slides</span></summary>
     <ol class="slides">${s.map(x => `<li value="${x.n}"><b>${esc(x.title || "(picture slide)")}</b>${x.body ? `<span>${esc(x.body)}</span>` : ""}</li>`).join("")}</ol></details>`;
 };
-const SLIDE_NOTE = `<p class="fine">This is the text of Professor Tan's slides. The slide files, with their pictures, are on eLearning.</p>`;
+const SLIDE_NOTE = "";
 function lectureDecks(r) {
   if (!r.ch.length) return r.topic === "Introduction" ? LECTURE_DECKS.filter(d => !DECK_CH.get(d).length) : [];
   return LECTURE_DECKS.filter(d => DECK_CH.get(d).some(c => r.ch.includes(c)));
@@ -1403,8 +1367,7 @@ async function loadNews() {
       <p class="minihead">Read the reporting</p>
       <ul class="sources">${s.sources.map(x => `<li><a href="${esc(safeUrl(x.url))}" target="_blank" rel="noopener">${esc(x.title || x.url)}</a></li>`).join("")}</ul>
     </article>`;
-  box.innerHTML = `<div class="newsgrid${d.stories.length === 1 ? " solo" : ""}">${d.stories.map(story).join("")}</div>
-    <p class="fine newsfoot">Events from ${esc(fmtDay(d.week_start))} to ${esc(fmtDay(d.week_end))}. Summaries are written by AI from news reports every Sunday and Wednesday. Read the linked sources before citing anything.</p>`;
+  box.innerHTML = `<div class="newsgrid${d.stories.length === 1 ? " solo" : ""}">${d.stories.map(story).join("")}</div>`;
   box.onclick = e => {
     const b = e.target.closest(".courselink button"); if (!b) return;
     const s = d.stories[+b.dataset.i];
@@ -1496,8 +1459,7 @@ const shortTime = iso => new Date(iso).toLocaleString("en-US", { month: "short",
       <label class="field"><span>UT Dallas email</span><input type="email" id="bemail" maxlength="120" autocomplete="email" placeholder="netid@utdallas.edu"></label>
       <label class="field"><span>Code</span><input type="text" id="bcode" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="ABCD-EFGH"></label>
       <div class="row"><span class="grow"></span><button class="btn" type="submit" id="bsigninbtn">Sign in</button></div>
-      <p class="bmsg" id="bmsg">${esc(note)}</p>
-      <p class="fine" style="margin-top:10px">Lost your code? Email Xiaowen.Tan@utdallas.edu for a new one.</p></form>`;
+      <p class="bmsg" id="bmsg">${esc(note)}</p></form>`;
     note = "";
     $("#bsignin").addEventListener("submit", async e => {
       e.preventDefault();
