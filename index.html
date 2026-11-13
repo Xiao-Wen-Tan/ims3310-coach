@@ -418,21 +418,21 @@ ol.slides span { display: block; font: .84rem/1.5 var(--sans); color: var(--mute
 
   <section class="panel" id="panel-news" role="tabpanel" aria-labelledby="tab-news" hidden>
     <div class="sec-head">
-      <div><span class="kicker">Business &amp; the world</span><h2>News this week</h2><p class="lede">One or two major international business events from the past week, and the chapter of the course that helps explain each one.</p></div>
+      <div><span class="kicker">Business &amp; the world</span><h2>News this week</h2></div>
     </div>
     <div id="news" aria-live="polite"></div>
   </section>
 
   <section class="panel" id="panel-board" role="tabpanel" aria-labelledby="tab-board" hidden>
     <div class="paper">
-      <div class="sec-head"><div><span class="kicker">Weekly discussion</span><h2>Discussion board</h2><p class="lede">One question a week, built from that week's chapter and the news. Post your view by Wednesday and reply to at least one classmate by Friday. The course discussion bot, an AI, asks each poster one follow-up question; Professor Tan reads every thread and decides any points.</p></div></div>
+      <div class="sec-head"><div><span class="kicker">Weekly discussion</span><h2>Discussion board</h2></div></div>
       <div id="board" aria-live="polite"></div>
     </div>
   </section>
 
   <section class="panel" id="panel-schedule" role="tabpanel" aria-labelledby="tab-schedule" hidden>
     <div class="sec-head">
-      <div><span class="kicker">Fall 2024</span><h2>Class schedule</h2><p class="lede">Dates as printed in the 9 Oct 2024 syllabus revision. All classes meet Tue and Thu, 5:30-6:45 PM, JSOM 2.722.</p></div>
+      <div><span class="kicker">Fall 2024</span><h2>Class schedule</h2></div>
       <div class="filters">
         <label for="chfilter" class="hint">Chapter</label>
         <select id="chfilter"><option value="">All</option></select>
@@ -444,7 +444,7 @@ ol.slides span { display: block; font: .84rem/1.5 var(--sans); color: var(--mute
 
   <section class="panel" id="panel-deadlines" role="tabpanel" aria-labelledby="tab-deadlines" hidden>
     <div class="sec-head">
-      <div><span class="kicker">Mark your calendar</span><h2>Exams and deadlines</h2><p class="lede">Late work loses 10% of the original score per school day and is not accepted more than one week after the due date.</p></div>
+      <div><span class="kicker">Mark your calendar</span><h2>Exams and deadlines</h2></div>
       <button class="btn ghost" id="icsbtn" type="button">Add all dates to my calendar</button>
     </div>
     <div class="deadlines" id="deadlines"></div>
@@ -453,7 +453,7 @@ ol.slides span { display: block; font: .84rem/1.5 var(--sans); color: var(--mute
 
   <section class="panel" id="panel-office" role="tabpanel" aria-labelledby="tab-office" hidden>
     <div class="paper">
-      <div class="sec-head"><div><span class="kicker">Meet with Professor Tan</span><h2>Office hours</h2><p class="lede" id="ohlede"></p></div></div>
+      <div class="sec-head"><div><span class="kicker">Meet with Professor Tan</span><h2>Office hours</h2></div></div>
       <div class="switch" id="ohswitch" role="group" aria-label="Booking type"><button type="button" data-k="slot" aria-pressed="true">Book a time</button><button type="button" data-k="request" aria-pressed="false">Request another time</button></div>
       <form class="ohgrid" id="ohform" novalidate>
         <div id="ohpick">
@@ -478,7 +478,7 @@ ol.slides span { display: block; font: .84rem/1.5 var(--sans); color: var(--mute
 
   <section class="panel" id="panel-assign" role="tabpanel" aria-labelledby="tab-assign" hidden>
     <div class="paper">
-      <div class="sec-head"><div><span class="kicker">Course requirements</span><h2>Assignments and grading</h2><p class="lede">How the final grade is built, what each group project asks for, the grading rubrics, and the exam and class rules.</p></div></div>
+      <div class="sec-head"><div><span class="kicker">Course requirements</span><h2>Assignments and grading</h2></div></div>
       <nav class="jump" aria-label="On this page"><a href="#part-grade">Grade</a><a href="#part-work">Assignments</a><a href="#part-rubric">Rubrics</a><a href="#part-exams">Exams</a><a href="#part-policy">Class policies</a></nav>
       <div id="assign"></div>
     </div>
@@ -1380,9 +1380,6 @@ async function loadNews() {
 /* ---------- Office hours booking (open times come from the coach server, see worker/src/index.js) ---------- */
 {
   const OH = DATA.office_hours;
-  const DAYNAME = { Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday" };
-  const clock = t => { const [h, m] = t.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")}`; };
-  $("#ohlede").textContent = `${OH.days.map(d => DAYNAME[d] || d).join("s and ")}s, ${clock(OH.start)}-${clock(OH.end)} ${+OH.end.split(":")[0] >= 12 ? "PM" : "AM"}, ${OH.room}. Book a ${OH.slot_minutes}-minute time below, or ask for another time if these don't work. Professor Tan gets an email right away.`;
   let kind = "slot", picked = null, loaded = false;
   const setKind = k => {
     kind = k;
